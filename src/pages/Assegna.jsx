@@ -1,241 +1,215 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.js";
+import { RotateCcw } from "lucide-react";
 
 export default function Assegna() {
   const [personale, setPersonale] = useState([]);
   const [articoli, setArticoli] = useState([]);
   const [assegnazioni, setAssegnazioni] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({
-    id_persona: "",
-    id_articolo: "",
-    quantita: 1,
-  });
+  const [selectedPersona, setSelectedPersona] = useState("");
+  const [selectedArticolo, setSelectedArticolo] = useState("");
+  const [quantita, setQuantita] = useState(1);
 
   useEffect(() => {
-    loadData();
-
-    // 🔁 Realtime
-    const ch = supabase
-      .channel("public:assegnazioni")
-      .on("postgres_changes", { event: "*", schema: "public" }, loadData)
+    fetchData();
+    const channel = supabase
+      .channel("assegnazioni-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "assegnazioni" },
+        () => fetchData()
+      )
       .subscribe();
-
-    return () => supabase.removeChannel(ch);
+    return () => supabase.removeChannel(channel);
   }, []);
 
-  async function loadData() {
-    const [pers, art, assegn] = await Promise.all([
-      supabase.from("personale").select("*").eq("attivo", true).order("id"),
-      supabase.from("articoli").select("*").order("id"),
-      supabase
-        .from("assegnazioni")
-        .select("*, personale(nome), articoli(nome_capo)")
-        .order("id", { ascending: false }),
+  async function fetchData() {
+    const { data: pers } = await supabase.from("personale").select("*");
+    const { data: art } = await supabase.from("articoli").select("*");
+    const { data: assegn } = await supabase
+      .from("assegnazioni")
+      .select("*, personale(nome), articoli(nome_capo)")
+      .order("id", { ascending: false });
+
+    setPersonale(pers || []);
+    setArticoli(art || []);
+    setAssegnazioni(assegn || []);
+  }
+
+  async function handleAssegna() {
+    if (!selectedPersona || !selectedArticolo || quantita <= 0) {
+      alert("Seleziona un dipendente, un articolo e una quantità valida.");
+      return;
+    }
+
+    // Prende l'articolo per scalare la quantità
+    const articolo = articoli.find((a) => a.id === parseInt(selectedArticolo));
+    if (!articolo || articolo.quantita < quantita) {
+      alert("Quantità non disponibile in magazzino!");
+      return;
+    }
+
+    await supabase.from("assegnazioni").insert([
+      {
+        id_persona: selectedPersona,
+        id_articolo: selectedArticolo,
+        quantita: quantita,
+        data_consegna: new Date().toISOString().split("T")[0],
+      },
     ]);
 
-    if (!pers.error) setPersonale(pers.data || []);
-    if (!art.error) setArticoli(art.data || []);
-    if (!assegn.error) setAssegnazioni(assegn.data || []);
+    // Scala la quantità in magazzino
+    await supabase
+      .from("articoli")
+      .update({ quantita: articolo.quantita - quantita })
+      .eq("id", selectedArticolo);
+
+    setSelectedPersona("");
+    setSelectedArticolo("");
+    setQuantita(1);
+    fetchData();
   }
 
-  // ➕ CREA o ✏️ MODIFICA
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleElimina(id, articoloId, qta) {
+    if (!window.confirm("Sei sicuro di voler eliminare questa assegnazione?")) return;
 
-    if (!form.id_persona || !form.id_articolo) {
-      alert("Seleziona sia persona che articolo.");
-      return;
-    }
-
-    const articolo = articoli.find((a) => a.id === Number(form.id_articolo));
-
-    if (!articolo) {
-      alert("Articolo non trovato.");
-      return;
-    }
-
-    if (!editingId && articolo.quantita < form.quantita) {
-      alert("Quantità non disponibile!");
-      return;
-    }
-
-    if (editingId) {
-      // Trova la vecchia assegnazione
-      const old = assegnazioni.find((a) => a.id === editingId);
-      const diff = form.quantita - (old?.quantita || 0);
-      const newQty = articolo.quantita - diff;
-
-      if (newQty < 0) {
-        alert("Quantità non sufficiente in magazzino!");
-        return;
-      }
-
-      const { error: updateErr } = await supabase
-        .from("assegnazioni")
-        .update({
-          id_persona: Number(form.id_persona),
-          id_articolo: Number(form.id_articolo),
-          quantita: form.quantita,
-        })
-        .eq("id", editingId);
-
-      if (updateErr) {
-        alert(updateErr.message);
-        return;
-      }
-
-      // Aggiorna magazzino
-      await supabase
-        .from("articoli")
-        .update({ quantita: newQty })
-        .eq("id", articolo.id);
-
-      setEditingId(null);
-    } else {
-      // Inserisci nuova assegnazione
-      const { error: insertErr } = await supabase.from("assegnazioni").insert([
-        {
-          id_persona: Number(form.id_persona),
-          id_articolo: Number(form.id_articolo),
-          quantita: form.quantita,
-          data_consegna: new Date().toISOString().split("T")[0],
-        },
-      ]);
-
-      if (insertErr) {
-        alert(insertErr.message);
-        return;
-      }
-
-      // Scala quantità dal magazzino
-      await supabase
-        .from("articoli")
-        .update({ quantita: articolo.quantita - form.quantita })
-        .eq("id", articolo.id);
-    }
-
-    setForm({ id_persona: "", id_articolo: "", quantita: 1 });
-    loadData();
-  }
-
-  // ✏️ MODIFICA
-  function editRow(a) {
-    setEditingId(a.id);
-    setForm({
-      id_persona: a.id_persona,
-      id_articolo: a.id_articolo,
-      quantita: a.quantita || 1,
-    });
-  }
-
-  // ❌ ELIMINA
-  async function removeRow(a) {
-    if (!confirm("Eliminare questa assegnazione?")) return;
-
-    const articolo = articoli.find((x) => x.id === a.id_articolo);
+    const articolo = articoli.find((a) => a.id === articoloId);
     if (articolo) {
       await supabase
         .from("articoli")
-        .update({ quantita: articolo.quantita + (a.quantita || 1) })
-        .eq("id", articolo.id);
+        .update({ quantita: articolo.quantita + qta })
+        .eq("id", articoloId);
     }
 
-    await supabase.from("assegnazioni").delete().eq("id", a.id);
-    loadData();
+    await supabase.from("assegnazioni").delete().eq("id", id);
+    fetchData();
+  }
+
+  async function handleModifica(assegnazione) {
+    const nuovaQuantita = parseInt(prompt("Inserisci la nuova quantità:", assegnazione.quantita));
+    if (!nuovaQuantita || nuovaQuantita <= 0) return;
+
+    const articolo = articoli.find((a) => a.id === assegnazione.id_articolo);
+    if (!articolo) return;
+
+    const differenza = nuovaQuantita - assegnazione.quantita;
+    const nuovaQtaMagazzino = articolo.quantita - differenza;
+
+    if (nuovaQtaMagazzino < 0) {
+      alert("Quantità non disponibile in magazzino!");
+      return;
+    }
+
+    await supabase
+      .from("assegnazioni")
+      .update({ quantita: nuovaQuantita })
+      .eq("id", assegnazione.id);
+
+    await supabase
+      .from("articoli")
+      .update({ quantita: nuovaQtaMagazzino })
+      .eq("id", articolo.id);
+
+    fetchData();
   }
 
   return (
-    <div className="container">
-      <div className="card">
-        <h3>Gestione Assegnazioni</h3>
+    <div className="p-6">
+      <h2 className="text-2xl font-semibold text-[#b30e0e] mb-4 flex items-center gap-2">
+        <RotateCcw /> Gestione Assegnazioni
+      </h2>
 
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}
+      {/* Form assegnazione */}
+      <div className="bg-white rounded-xl shadow-md p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+        <select
+          value={selectedPersona}
+          onChange={(e) => setSelectedPersona(e.target.value)}
+          className="border border-gray-300 rounded-lg px-4 py-2 w-full md:w-1/3"
         >
-          <select
-            required
-            value={form.id_persona}
-            onChange={(e) => setForm({ ...form, id_persona: e.target.value })}
-          >
-            <option value="">Seleziona personale</option>
-            {personale.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome} ({p.qualifica || "—"})
-              </option>
-            ))}
-          </select>
+          <option value="">Seleziona personale</option>
+          {personale.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nome}
+            </option>
+          ))}
+        </select>
 
-          <select
-            required
-            value={form.id_articolo}
-            onChange={(e) => setForm({ ...form, id_articolo: e.target.value })}
-          >
-            <option value="">Seleziona articolo</option>
-            {articoli.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nome_capo} — {a.quantita} disponibili
-              </option>
-            ))}
-          </select>
+        <select
+          value={selectedArticolo}
+          onChange={(e) => setSelectedArticolo(e.target.value)}
+          className="border border-gray-300 rounded-lg px-4 py-2 w-full md:w-1/3"
+        >
+          <option value="">Seleziona articolo</option>
+          {articoli.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.nome_capo}
+            </option>
+          ))}
+        </select>
 
-          <input
-            type="number"
-            min="1"
-            placeholder="Quantità"
-            value={form.quantita}
-            onChange={(e) =>
-              setForm({ ...form, quantita: Number(e.target.value) })
-            }
-          />
+        <input
+          type="number"
+          value={quantita}
+          onChange={(e) => setQuantita(parseInt(e.target.value))}
+          min="1"
+          className="border border-gray-300 rounded-lg px-4 py-2 w-20 text-center"
+        />
 
-          <div style={{ textAlign: "right" }}>
-            <button className="btn">
-              {editingId ? "💾 Salva modifiche" : "➕ Assegna"}
-            </button>
-          </div>
-        </form>
+        <button
+          onClick={handleAssegna}
+          className="bg-[#b30e0e] hover:bg-[#8b0c0c] text-white font-semibold px-6 py-2 rounded-lg shadow-md transition-all"
+        >
+          + Assegna
+        </button>
       </div>
 
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>Storico Assegnazioni</h3>
-
-        <table className="table">
+      {/* Storico sotto */}
+      <div className="mt-8 bg-white rounded-xl shadow-md p-4">
+        <h3 className="text-lg font-semibold mb-3 text-[#b30e0e]">
+          Storico Assegnazioni
+        </h3>
+        <table className="w-full text-sm text-left border-collapse">
           <thead>
-            <tr>
-              <th>ID</th>
-              <th>Dipendente</th>
-              <th>Articolo</th>
-              <th>Quantità</th>
-              <th>Data consegna</th>
-              <th>Azioni</th>
+            <tr className="border-b bg-gray-100">
+              <th className="p-2">ID</th>
+              <th className="p-2">Dipendente</th>
+              <th className="p-2">Articolo</th>
+              <th className="p-2">Quantità</th>
+              <th className="p-2">Data consegna</th>
+              <th className="p-2 text-center">Azioni</th>
             </tr>
           </thead>
           <tbody>
-            {assegnazioni.map((a) => (
-              <tr key={a.id}>
-                <td>{a.id}</td>
-                <td>{a.personale?.nome || "-"}</td>
-                <td>{a.articoli?.nome_capo || "-"}</td>
-                <td>{a.quantita || 1}</td>
-                <td>{a.data_consegna}</td>
-                <td>
-                  <button className="btn secondary" onClick={() => editRow(a)}>
-                    ✏️
-                  </button>{" "}
-                  <button className="btn secondary" onClick={() => removeRow(a)}>
-                    ❌
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {assegnazioni.length === 0 && (
+            {assegnazioni.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                <td colSpan="6" className="text-center p-3 text-gray-500">
                   Nessuna assegnazione presente
                 </td>
               </tr>
+            ) : (
+              assegnazioni.map((a) => (
+                <tr key={a.id} className="border-b hover:bg-gray-50">
+                  <td className="p-2">{a.id}</td>
+                  <td className="p-2">{a.personale?.nome || "-"}</td>
+                  <td className="p-2">{a.articoli?.nome_capo || "-"}</td>
+                  <td className="p-2">{a.quantita}</td>
+                  <td className="p-2">{a.data_consegna}</td>
+                  <td className="p-2 text-center">
+                    <button
+                      onClick={() => handleModifica(a)}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-semibold px-3 py-1 rounded mr-2"
+                    >
+                      ✏️ Modifica
+                    </button>
+                    <button
+                      onClick={() => handleElimina(a.id, a.id_articolo, a.quantita)}
+                      className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded"
+                    >
+                      ❌ Elimina
+                    </button>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
