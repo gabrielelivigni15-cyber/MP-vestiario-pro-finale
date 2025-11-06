@@ -15,47 +15,55 @@ export default function Articoli() {
     foto_url: ''
   });
 
-  // Carica i dati
+  // Carica elenco
   async function load() {
     const { data, error } = await supabase
       .from('articoli')
       .select('*')
       .order('id', { ascending: true });
-    if (error) console.error(error);
+    if (error) {
+      console.error(error);
+      return;
+    }
     setRows(data || []);
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  // Realtime MGX-style
+  // Realtime stile MGX
   useEffect(() => {
     const ch = supabase
       .channel('public:articoli')
       .on('postgres_changes', { event: '*', schema: 'public' }, load)
       .subscribe();
-
     return () => supabase.removeChannel(ch);
   }, []);
 
-  // Aggiungi o modifica
-  async function add(e) {
+  // Aggiungi / Salva modifiche
+  async function onSubmit(e) {
     e.preventDefault();
 
     const payload = {
-      ...form,
+      nome: form.nome?.trim() || '',
+      tipo: form.tipo || 'T-shirt/Polo',
+      taglia: form.taglia?.trim() || '',
+      fornitore: form.fornitore?.trim() || '',
+      codice_fornitore: form.codice_fornitore?.trim() || '',
       quantita: Number(form.quantita || 0),
-      valore: Number(form.valore || 0)
+      valore: Number(form.valore || 0),
+      foto_url: form.foto_url?.trim() || ''
     };
 
     if (editingId) {
-      await supabase.from('articoli').update(payload).eq('id', editingId);
+      const { error } = await supabase.from('articoli').update(payload).eq('id', editingId);
+      if (error) { alert(error.message); return; }
       setEditingId(null);
     } else {
-      await supabase.from('articoli').insert([payload]);
+      const { error } = await supabase.from('articoli').insert([payload]);
+      if (error) { alert(error.message); return; }
     }
 
+    // reset form + ricarica
     setForm({
       nome: '',
       tipo: 'T-shirt/Polo',
@@ -66,43 +74,61 @@ export default function Articoli() {
       valore: 0,
       foto_url: ''
     });
+    await load();
   }
 
-  // Modifica / Elimina
-  function editRow(row) {
-    setEditingId(row.id);
-    setForm(row);
+  // Carica riga nel form (modifica inline)
+  function editRow(r) {
+    setEditingId(r.id);
+    setForm({
+      nome: r.nome || '',
+      tipo: r.tipo || 'T-shirt/Polo',
+      taglia: r.taglia || '',
+      fornitore: r.fornitore || '',
+      codice_fornitore: r.codice_fornitore || '',
+      quantita: Number(r.quantita ?? 0),
+      valore: Number(r.valore ?? 0),
+      foto_url: r.foto_url || ''
+    });
   }
 
-  async function remove(id) {
-    if (confirm('Vuoi eliminare questo articolo?')) {
-      await supabase.from('articoli').delete().eq('id', id);
+  // Elimina riga
+  async function removeRow(id) {
+    if (!confirm('Eliminare articolo?')) return;
+    const { error } = await supabase.from('articoli').delete().eq('id', id);
+    if (error) { alert(error.message); return; }
+    await load();
+    // se stavi modificando proprio questa riga, esci dalla modalità modifica
+    if (editingId === id) {
+      setEditingId(null);
+      setForm({
+        nome: '',
+        tipo: 'T-shirt/Polo',
+        taglia: '',
+        fornitore: '',
+        codice_fornitore: '',
+        quantita: 0,
+        valore: 0,
+        foto_url: ''
+      });
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] text-[#333] p-6">
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-        <h1 className="text-2xl font-bold text-[#B30E0E] mb-6">
-          👕 Gestione articoli
-        </h1>
+    <div className="container">
+      <div className="card">
+        <h3>Gestione articoli</h3>
 
-        {/* FORM */}
-        <form
-          onSubmit={add}
-          className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-8"
-        >
+        <form onSubmit={onSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
           <input
             required
             placeholder="Nome capo"
             value={form.nome}
             onChange={e => setForm({ ...form, nome: e.target.value })}
-            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <select
             value={form.tipo}
             onChange={e => setForm({ ...form, tipo: e.target.value })}
-            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           >
             <option>T-shirt/Polo</option>
             <option>Felpa</option>
@@ -115,110 +141,98 @@ export default function Articoli() {
             placeholder="Taglia"
             value={form.taglia}
             onChange={e => setForm({ ...form, taglia: e.target.value })}
-            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
             placeholder="Fornitore"
             value={form.fornitore}
             onChange={e => setForm({ ...form, fornitore: e.target.value })}
-            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
             placeholder="Codice fornitore"
             value={form.codice_fornitore}
             onChange={e => setForm({ ...form, codice_fornitore: e.target.value })}
-            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
             placeholder="Quantità"
             type="number"
             value={form.quantita}
             onChange={e => setForm({ ...form, quantita: e.target.value })}
-            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
-            placeholder="Valore €"
+            placeholder="Valore unitario €"
             type="number"
             step="0.01"
             value={form.valore}
             onChange={e => setForm({ ...form, valore: e.target.value })}
-            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
-            placeholder="URL foto"
+            placeholder="URL Foto (opzionale)"
             value={form.foto_url}
             onChange={e => setForm({ ...form, foto_url: e.target.value })}
-            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
-
-          <button
-            className="col-span-full bg-[#B30E0E] hover:bg-[#8b0c0c] text-white font-semibold py-2 px-4 rounded-lg shadow transition"
-          >
-            {editingId ? '💾 Salva modifiche' : '➕ Aggiungi articolo'}
-          </button>
+          <div style={{ gridColumn: '1/-1', textAlign: 'right' }}>
+            <button className="btn">{editingId ? '💾 Salva modifiche' : '➕ Aggiungi'}</button>
+          </div>
         </form>
+      </div>
 
-        {/* TABELLA */}
-        <div className="overflow-x-auto bg-white rounded-xl border border-gray-200 shadow-sm">
-          <table className="min-w-full text-sm">
-            <thead className="bg-[#B30E0E] text-white text-center">
-              <tr>
-                <th className="p-3">ID</th>
-                <th>Foto</th>
-                <th>Nome</th>
-                <th>Tipo</th>
-                <th>Taglia</th>
-                <th>Q.tà</th>
-                <th>Valore</th>
-                <th>Azioni</th>
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>Articoli</h3>
+
+        <table className="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Foto</th>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Taglia</th>
+              <th>Q.tà</th>
+              <th>Valore</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.id}>
+                <td>{r.id}</td>
+                <td>
+                  {r.foto_url
+                    ? <img src={r.foto_url} alt="foto articolo" style={{ width: 50, height: 'auto', borderRadius: 6 }} />
+                    : '—'}
+                </td>
+                <td>{r.nome}</td>
+                <td>{r.tipo}</td>
+                <td>{r.taglia}</td>
+                <td>{r.quantita}</td>
+                <td>€ {(r.valore || 0).toLocaleString('it-IT')}</td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => editRow(r)}
+                  >
+                    ✏️ Modifica
+                  </button>{' '}
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => removeRow(r.id)}
+                  >
+                    ❌ Elimina
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map(r => (
-                <tr key={r.id} className="border-t hover:bg-[#f9f9f9] text-center">
-                  <td className="p-2">{r.id}</td>
-                  <td className="p-2">
-                    {r.foto_url ? (
-                      <img
-                        src={r.foto_url}
-                        alt="foto"
-                        className="h-12 w-auto mx-auto rounded-md shadow-sm"
-                      />
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td>{r.nome}</td>
-                  <td>{r.tipo}</td>
-                  <td>{r.taglia}</td>
-                  <td>{r.quantita}</td>
-                  <td>€ {(r.valore || 0).toLocaleString('it-IT')}</td>
-                  <td>
-                    <button
-                      onClick={() => editRow(r)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded mr-2"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => remove(r.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
-                    >
-                      ❌
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan="8" className="text-center p-6 text-gray-500">
-                    Nessun articolo presente
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan="8" style={{ textAlign: 'center', padding: 12, color: '#6b7280' }}>
+                  Nessun articolo presente
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
