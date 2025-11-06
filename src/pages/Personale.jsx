@@ -7,9 +7,12 @@ export default function Personale() {
   const [form, setForm] = useState({
     nome: "",
     qualifica: "",
-    taglia_tshirt: "",
-    taglia_pantaloni: "",
-    taglia_gilet: ""
+    tshirt: "",
+    pantaloni: "",
+    gilet: "",
+    note: "",
+    attivo: true,
+    prezzo_unitari: ""
   });
 
   // 🔁 Carica tutti i dipendenti
@@ -39,16 +42,19 @@ export default function Personale() {
     return () => supabase.removeChannel(ch);
   }, []);
 
-  // ➕ Aggiungi / Salva modifiche
+  // ➕ Aggiungi / Modifica
   async function onSubmit(e) {
     e.preventDefault();
 
     const payload = {
       nome: form.nome?.trim() || "",
       qualifica: form.qualifica?.trim() || "",
-      taglia_tshirt: form.taglia_tshirt?.trim() || "",
-      taglia_pantaloni: form.taglia_pantaloni?.trim() || "",
-      taglia_gilet: form.taglia_gilet?.trim() || ""
+      tshirt: form.tshirt?.trim() || "",
+      pantaloni: form.pantaloni?.trim() || "",
+      gilet: form.gilet?.trim() || "",
+      note: form.note?.trim() || "",
+      attivo: form.attivo,
+      prezzo_unitari: form.prezzo_unitari ? parseFloat(form.prezzo_unitari) : null
     };
 
     if (editingId) {
@@ -66,30 +72,35 @@ export default function Personale() {
       }
     }
 
-    // reset + reload
     setForm({
       nome: "",
       qualifica: "",
-      taglia_tshirt: "",
-      taglia_pantaloni: "",
-      taglia_gilet: ""
+      tshirt: "",
+      pantaloni: "",
+      gilet: "",
+      note: "",
+      attivo: true,
+      prezzo_unitari: ""
     });
     await load();
   }
 
-  // ✏️ Modifica riga
+  // ✏️ Modifica
   function editRow(r) {
     setEditingId(r.id);
     setForm({
       nome: r.nome || "",
       qualifica: r.qualifica || "",
-      taglia_tshirt: r.taglia_tshirt || "",
-      taglia_pantaloni: r.taglia_pantaloni || "",
-      taglia_gilet: r.taglia_gilet || ""
+      tshirt: r.tshirt || "",
+      pantaloni: r.pantaloni || "",
+      gilet: r.gilet || "",
+      note: r.note || "",
+      attivo: r.attivo ?? true,
+      prezzo_unitari: r.prezzo_unitari ?? ""
     });
   }
 
-  // ❌ Elimina riga
+  // ❌ Elimina
   async function removeRow(id) {
     if (!confirm("Eliminare questo dipendente?")) return;
     const { error } = await supabase.from("personale").delete().eq("id", id);
@@ -98,16 +109,6 @@ export default function Personale() {
       return;
     }
     await load();
-    if (editingId === id) {
-      setEditingId(null);
-      setForm({
-        nome: "",
-        qualifica: "",
-        taglia_tshirt: "",
-        taglia_pantaloni: "",
-        taglia_gilet: ""
-      });
-    }
   }
 
   return (
@@ -121,7 +122,7 @@ export default function Personale() {
         >
           <input
             required
-            placeholder="Nome dipendente"
+            placeholder="Nome"
             value={form.nome}
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
           />
@@ -132,19 +133,38 @@ export default function Personale() {
           />
           <input
             placeholder="Taglia T-shirt/Polo"
-            value={form.taglia_tshirt}
-            onChange={(e) => setForm({ ...form, taglia_tshirt: e.target.value })}
+            value={form.tshirt}
+            onChange={(e) => setForm({ ...form, tshirt: e.target.value })}
           />
           <input
             placeholder="Taglia pantaloni"
-            value={form.taglia_pantaloni}
-            onChange={(e) => setForm({ ...form, taglia_pantaloni: e.target.value })}
+            value={form.pantaloni}
+            onChange={(e) => setForm({ ...form, pantaloni: e.target.value })}
           />
           <input
             placeholder="Taglia gilet/giubbotto"
-            value={form.taglia_gilet}
-            onChange={(e) => setForm({ ...form, taglia_gilet: e.target.value })}
+            value={form.gilet}
+            onChange={(e) => setForm({ ...form, gilet: e.target.value })}
           />
+          <input
+            placeholder="Note"
+            value={form.note}
+            onChange={(e) => setForm({ ...form, note: e.target.value })}
+          />
+          <input
+            type="number"
+            placeholder="Prezzo unitario (€)"
+            value={form.prezzo_unitari}
+            onChange={(e) => setForm({ ...form, prezzo_unitari: e.target.value })}
+          />
+          <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <input
+              type="checkbox"
+              checked={form.attivo}
+              onChange={(e) => setForm({ ...form, attivo: e.target.checked })}
+            />
+            Attivo
+          </label>
           <div style={{ gridColumn: "1/-1", textAlign: "right" }}>
             <button className="btn">
               {editingId ? "💾 Salva modifiche" : "➕ Aggiungi"}
@@ -155,16 +175,18 @@ export default function Personale() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Elenco personale</h3>
-
         <table className="table">
           <thead>
             <tr>
               <th>ID</th>
               <th>Nome</th>
               <th>Qualifica</th>
-              <th>T-shirt/Polo</th>
+              <th>T-shirt</th>
               <th>Pantaloni</th>
-              <th>Gilet/Giubbotto</th>
+              <th>Gilet</th>
+              <th>Note</th>
+              <th>Attivo</th>
+              <th>Prezzo (€)</th>
               <th>Azioni</th>
             </tr>
           </thead>
@@ -174,22 +196,17 @@ export default function Personale() {
                 <td>{r.id}</td>
                 <td>{r.nome}</td>
                 <td>{r.qualifica}</td>
-                <td>{r.taglia_tshirt}</td>
-                <td>{r.taglia_pantaloni}</td>
-                <td>{r.taglia_gilet}</td>
+                <td>{r.tshirt}</td>
+                <td>{r.pantaloni}</td>
+                <td>{r.gilet}</td>
+                <td>{r.note}</td>
+                <td>{r.attivo ? "✅" : "❌"}</td>
+                <td>{r.prezzo_unitari ? `${r.prezzo_unitari} €` : "-"}</td>
                 <td>
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    onClick={() => editRow(r)}
-                  >
+                  <button className="btn secondary" onClick={() => editRow(r)}>
                     ✏️ Modifica
                   </button>{" "}
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    onClick={() => removeRow(r.id)}
-                  >
+                  <button className="btn secondary" onClick={() => removeRow(r.id)}>
                     ❌ Elimina
                   </button>
                 </td>
@@ -197,7 +214,7 @@ export default function Personale() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan="7" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                <td colSpan="10" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
                   Nessun dipendente presente
                 </td>
               </tr>
