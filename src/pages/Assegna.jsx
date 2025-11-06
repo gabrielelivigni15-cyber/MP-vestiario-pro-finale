@@ -174,48 +174,45 @@ export default function Assegna() {
       </div>
 
       {/* --- STORICO --- */}
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>Storico Assegnazioni</h3>
-        <table className="table">
-          <thead>
+      <table className="table" style={{ marginTop: 20 }}>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Dipendente</th>
+            <th>Articolo</th>
+            <th>Quantità</th>
+            <th>Data consegna</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          {assegnazioni.length === 0 ? (
             <tr>
-              <th>ID</th>
-              <th>Dipendente</th>
-              <th>Articolo</th>
-              <th>Quantità</th>
-              <th>Data consegna</th>
-              <th>Azioni</th>
+              <td colSpan="6" style={{ textAlign: "center", padding: 12 }}>
+                Nessuna assegnazione presente
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {assegnazioni.length === 0 ? (
-              <tr>
-                <td colSpan="6" style={{ textAlign: "center", padding: 12 }}>
-                  Nessuna assegnazione presente
+          ) : (
+            assegnazioni.map((a) => (
+              <tr key={a.id}>
+                <td>{a.id}</td>
+                <td>{a.personale?.nome || "-"}</td>
+                <td>{a.articoli?.nome_capo || "-"}</td>
+                <td>{a.quantita}</td>
+                <td>{a.data_consegna}</td>
+                <td>
+                  <button className="btn secondary" onClick={() => handleEdit(a)}>
+                    ✏️
+                  </button>{" "}
+                  <button className="btn secondary" onClick={() => handleDelete(a)}>
+                    ❌
+                  </button>
                 </td>
               </tr>
-            ) : (
-              assegnazioni.map((a) => (
-                <tr key={a.id}>
-                  <td>{a.id}</td>
-                  <td>{a.personale?.nome || "-"}</td>
-                  <td>{a.articoli?.nome_capo || "-"}</td>
-                  <td>{a.quantita}</td>
-                  <td>{a.data_consegna}</td>
-                  <td>
-                    <button className="btn secondary" onClick={() => handleEdit(a)}>
-                      ✏️
-                    </button>{" "}
-                    <button className="btn secondary" onClick={() => handleDelete(a)}>
-                      ❌
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
