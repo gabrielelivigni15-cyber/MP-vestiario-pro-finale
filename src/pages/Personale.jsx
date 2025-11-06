@@ -6,7 +6,6 @@ export default function Personale() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     nome: "",
-    reparto: "",
     qualifica: "",
     taglia_tshirt: "",
     taglia_pantaloni: "",
@@ -30,7 +29,7 @@ export default function Personale() {
     load();
   }, []);
 
-  // 🔥 Realtime come MGX
+  // 🔥 Realtime MGX
   useEffect(() => {
     const ch = supabase
       .channel("public:personale")
@@ -46,7 +45,6 @@ export default function Personale() {
 
     const payload = {
       nome: form.nome?.trim() || "",
-      reparto: form.reparto?.trim() || "",
       qualifica: form.qualifica?.trim() || "",
       taglia_tshirt: form.taglia_tshirt?.trim() || "",
       taglia_pantaloni: form.taglia_pantaloni?.trim() || "",
@@ -71,7 +69,6 @@ export default function Personale() {
     // reset + reload
     setForm({
       nome: "",
-      reparto: "",
       qualifica: "",
       taglia_tshirt: "",
       taglia_pantaloni: "",
@@ -85,7 +82,6 @@ export default function Personale() {
     setEditingId(r.id);
     setForm({
       nome: r.nome || "",
-      reparto: r.reparto || "",
       qualifica: r.qualifica || "",
       taglia_tshirt: r.taglia_tshirt || "",
       taglia_pantaloni: r.taglia_pantaloni || "",
@@ -106,7 +102,6 @@ export default function Personale() {
       setEditingId(null);
       setForm({
         nome: "",
-        reparto: "",
         qualifica: "",
         taglia_tshirt: "",
         taglia_pantaloni: "",
@@ -129,11 +124,6 @@ export default function Personale() {
             placeholder="Nome dipendente"
             value={form.nome}
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
-          />
-          <input
-            placeholder="Reparto"
-            value={form.reparto}
-            onChange={(e) => setForm({ ...form, reparto: e.target.value })}
           />
           <input
             placeholder="Qualifica"
@@ -171,7 +161,6 @@ export default function Personale() {
             <tr>
               <th>ID</th>
               <th>Nome</th>
-              <th>Reparto</th>
               <th>Qualifica</th>
               <th>T-shirt/Polo</th>
               <th>Pantaloni</th>
@@ -184,7 +173,6 @@ export default function Personale() {
               <tr key={r.id}>
                 <td>{r.id}</td>
                 <td>{r.nome}</td>
-                <td>{r.reparto}</td>
                 <td>{r.qualifica}</td>
                 <td>{r.taglia_tshirt}</td>
                 <td>{r.taglia_pantaloni}</td>
@@ -209,7 +197,7 @@ export default function Personale() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan="8" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                <td colSpan="7" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
                   Nessun dipendente presente
                 </td>
               </tr>
