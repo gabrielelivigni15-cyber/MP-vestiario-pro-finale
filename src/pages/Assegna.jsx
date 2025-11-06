@@ -1,90 +1,110 @@
-import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
-import { Plus, Trash2, Edit } from "lucide-react";
+import React, { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase.js'
 
 export default function Assegna() {
-  const [personale, setPersonale] = useState([]);
-  const [articoli, setArticoli] = useState([]);
-  const [assegnazioni, setAssegnazioni] = useState([]);
-  const [idPersona, setIdPersona] = useState("");
-  const [idArticolo, setIdArticolo] = useState("");
-  const [quantita, setQuantita] = useState(1);
+  const [articoli, setArticoli] = useState([])
+  const [persone, setPersone] = useState([])
+  const [storico, setStorico] = useState([])
+  const [form, setForm] = useState({ id_persona: '', id_articolo: '', prezzo_unitario: '', quantita: 1 })
 
+  // Carica dati iniziali
+  async function load() {
+    const { data: a } = await supabase.from('articoli').select('*').order('nome')
+    const { data: p } = await supabase.from('personale').select('*').order('nome')
+    const { data: s } = await supabase.from('assegnazioni').select('*').order('id', { ascending: false })
+    setArticoli(a || [])
+    setPersone(p || [])
+    setStorico(s || [])
+  }
+
+  useEffect(() => { load() }, [])
+
+  // Realtime aggiornamenti automatici
   useEffect(() => {
-    loadData();
-  }, []);
+    const ch = supabase
+      .channel('rt_ass')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assegnazioni' }, load)
+      .subscribe()
+    return () => supabase.removeChannel(ch)
+  }, [])
 
-  async function loadData() {
-    const { data: pers } = await supabase.from("personale").select("id, nome");
-    const { data: art } = await supabase.from("articoli").select("id, nome_capo");
-    const { data: ass } = await supabase
-      .from("assegnazioni")
-      .select(`id, quantita, data_consegna, 
-               personale ( nome ), 
-               articoli ( nome_capo )`)
-      .order("id", { ascending: false });
-
-    setPersonale(pers || []);
-    setArticoli(art || []);
-    setAssegnazioni(ass || []);
-  }
-
-  async function handleAssegna() {
-    if (!idPersona || !idArticolo) {
-      alert("⚠️ Seleziona personale e articolo.");
-      return;
+  // Creazione assegnazione
+  async function creaAssegnazione(e) {
+    e.preventDefault()
+    const art = articoli.find(a => String(a.id) === String(form.id_articolo))
+    if (!art) {
+      alert('⚠️ Seleziona articolo')
+      return
+    }
+    if ((art.quantita || 0) < Number(form.quantita)) {
+      alert('❌ Scorta insufficiente per questo articolo')
+      return
     }
 
-    const nuova = {
-      id_persona: parseInt(idPersona),
-      id_articolo: parseInt(idArticolo),
-      quantita: parseInt(quantita),
-      data_consegna: new Date().toISOString().split("T")[0],
-    };
+    const payload = {
+      id_persona: Number(form.id_persona),
+      id_articolo: Number(form.id_articolo),
+      quantita: Number(form.quantita),
+      prezzo_unitario: Number(form.prezzo_unitario || 0),
+      data_consegna: new Date().toISOString().split('T')[0]
+    }
 
-    const { error } = await supabase.from("assegnazioni").insert([nuova]);
-
+    const { error } = await supabase.from('assegnazioni').insert(payload)
     if (error) {
-      alert("❌ Errore durante l'inserimento:\n" + error.message);
-      console.error(error);
-    } else {
-      alert("✅ Assegnazione salvata!");
-      setIdPersona("");
-      setIdArticolo("");
-      setQuantita(1);
-      loadData();
+      alert(error.message)
+      return
     }
+
+    // Riduci scorta automatica
+    const { error: updErr } = await supabase.rpc('decrementa_scorta', { 
+      p_articolo_id: Number(form.id_articolo), 
+      p_qta: Number(form.quantita)
+    })
+    if (updErr) {
+      await supabase
+        .from('articoli')
+        .update({ quantita: (art.quantita || 0) - Number(form.quantita) })
+        .eq('id', art.id)
+    }
+
+    setForm({ id_persona: '', id_articolo: '', prezzo_unitario: '', quantita: 1 })
   }
 
-  async function handleElimina(id) {
-    if (!window.confirm("Vuoi eliminare questa assegnazione?")) return;
-    await supabase.from("assegnazioni").delete().eq("id", id);
-    loadData();
-  }
-
-  async function handleModifica(ass) {
-    const nuovaQta = prompt("Inserisci nuova quantità:", ass.quantita);
-    if (nuovaQta && !isNaN(nuovaQta)) {
-      await supabase.from("assegnazioni").update({ quantita: nuovaQta }).eq("id", ass.id);
-      loadData();
+  // Elimina assegnazione
+  async function eliminaAssegnazione(row) {
+    if (!confirm('Eliminare assegnazione?')) return
+    const { error } = await supabase.from('assegnazioni').delete().eq('id', row.id)
+    if (error) {
+      alert(error.message)
+      return
     }
+    const art = articoli.find(a => a.id === row.id_articolo)
+    if (art)
+      await supabase
+        .from('articoli')
+        .update({ quantita: (art.quantita || 0) + (row.quantita || 1) })
+        .eq('id', art.id)
   }
 
   return (
-    <div className="p-6">
-      <div className="bg-white rounded-xl shadow-md p-5 mb-6">
-        <h2 className="text-xl font-semibold mb-4 text-[#b30e0e]">
-          Gestione Assegnazioni
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+    <div className="container">
+      <div className="card">
+        <h3>Nuova assegnazione</h3>
+        <form
+          onSubmit={creaAssegnazione}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr 0.5fr auto',
+            gap: 8
+          }}
+        >
           <select
-            className="border rounded-lg p-2"
-            value={idPersona}
-            onChange={(e) => setIdPersona(e.target.value)}
+            required
+            value={form.id_persona}
+            onChange={e => setForm({ ...form, id_persona: e.target.value })}
           >
-            <option value="">Seleziona personale</option>
-            {personale.map((p) => (
+            <option value="">Seleziona persona…</option>
+            {persone.map(p => (
               <option key={p.id} value={p.id}>
                 {p.nome}
               </option>
@@ -92,14 +112,14 @@ export default function Assegna() {
           </select>
 
           <select
-            className="border rounded-lg p-2"
-            value={idArticolo}
-            onChange={(e) => setIdArticolo(e.target.value)}
+            required
+            value={form.id_articolo}
+            onChange={e => setForm({ ...form, id_articolo: e.target.value })}
           >
-            <option value="">Seleziona articolo</option>
-            {articoli.map((a) => (
+            <option value="">Seleziona articolo…</option>
+            {articoli.map(a => (
               <option key={a.id} value={a.id}>
-                {a.nome_capo}
+                {a.nome} (Q.tà {a.quantita})
               </option>
             ))}
           </select>
@@ -107,70 +127,67 @@ export default function Assegna() {
           <input
             type="number"
             min="1"
-            value={quantita}
-            onChange={(e) => setQuantita(e.target.value)}
-            className="border rounded-lg p-2 text-center"
+            placeholder="Quantità"
+            value={form.quantita}
+            onChange={e => setForm({ ...form, quantita: e.target.value })}
           />
 
-          <button
-            onClick={handleAssegna}
-            className="flex items-center justify-center bg-[#b30e0e] text-white px-4 py-2 rounded-lg shadow hover:bg-[#8b0c0c] transition"
-          >
-            <Plus className="w-4 h-4 mr-1" /> Assegna
-          </button>
-        </div>
+          <input
+            placeholder="Prezzo unitario (facoltativo)"
+            type="number"
+            step="0.01"
+            value={form.prezzo_unitario}
+            onChange={e => setForm({ ...form, prezzo_unitario: e.target.value })}
+          />
+
+          <button className="btn">Assegna</button>
+        </form>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md p-5">
-        <h2 className="text-xl font-semibold mb-4 text-[#b30e0e]">
-          Elenco Assegnazioni
-        </h2>
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-[#f8f9fa] border-b">
-            <tr className="text-left">
-              <th className="p-2">ID</th>
-              <th className="p-2">Dipendente</th>
-              <th className="p-2">Articolo</th>
-              <th className="p-2">Quantità</th>
-              <th className="p-2">Data consegna</th>
-              <th className="p-2 text-center">Azioni</th>
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>Assegnazioni recenti</h3>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Persona</th>
+              <th>Articolo</th>
+              <th>Quantità</th>
+              <th>Data</th>
+              <th>Prezzo</th>
+              <th />
             </tr>
           </thead>
           <tbody>
-            {assegnazioni.length > 0 ? (
-              assegnazioni.map((a) => (
-                <tr key={a.id} className="border-b hover:bg-gray-50">
-                  <td className="p-2">{a.id}</td>
-                  <td className="p-2">{a.personale?.nome || "-"}</td>
-                  <td className="p-2">{a.articoli?.nome_capo || "-"}</td>
-                  <td className="p-2">{a.quantita}</td>
-                  <td className="p-2">{a.data_consegna}</td>
-                  <td className="p-2 text-center flex justify-center gap-2">
+            {storico.map(r => {
+              const p = persone.find(x => x.id === r.id_persona)
+              const a = articoli.find(x => x.id === r.id_articolo)
+              return (
+                <tr key={r.id}>
+                  <td>{r.id}</td>
+                  <td>{p?.nome || r.id_persona}</td>
+                  <td>{a?.nome || r.id_articolo}</td>
+                  <td>{r.quantita}</td>
+                  <td>{r.data_consegna}</td>
+                  <td>
+                    {r.prezzo_unitario
+                      ? '€ ' + Number(r.prezzo_unitario).toLocaleString('it-IT')
+                      : '-'}
+                  </td>
+                  <td>
                     <button
-                      onClick={() => handleModifica(a)}
-                      className="text-blue-600 hover:text-blue-800"
+                      className="btn secondary"
+                      onClick={() => eliminaAssegnazione(r)}
                     >
-                      <Edit size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleElimina(a.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 size={16} />
+                      Elimina
                     </button>
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" className="text-center py-3 text-gray-500">
-                  Nessuna assegnazione presente
-                </td>
-              </tr>
-            )}
+              )
+            })}
           </tbody>
         </table>
       </div>
     </div>
-  );
+  )
 }
