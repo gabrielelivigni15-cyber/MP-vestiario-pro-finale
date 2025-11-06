@@ -15,7 +15,7 @@ export default function Articoli() {
     foto_url: ''
   });
 
-  // 🔁 Carica tutti gli articoli
+  // Carica i dati
   async function load() {
     const { data, error } = await supabase
       .from('articoli')
@@ -29,7 +29,7 @@ export default function Articoli() {
     load();
   }, []);
 
-  // 🔥 Realtime identico a come funzionava su MGX
+  // Realtime MGX-style
   useEffect(() => {
     const ch = supabase
       .channel('public:articoli')
@@ -39,7 +39,7 @@ export default function Articoli() {
     return () => supabase.removeChannel(ch);
   }, []);
 
-  // ➕ Inserisci o modifica articolo
+  // Aggiungi o modifica
   async function add(e) {
     e.preventDefault();
 
@@ -50,12 +50,10 @@ export default function Articoli() {
     };
 
     if (editingId) {
-      const { error } = await supabase.from('articoli').update(payload).eq('id', editingId);
-      if (error) alert(error.message);
+      await supabase.from('articoli').update(payload).eq('id', editingId);
       setEditingId(null);
     } else {
-      const { error } = await supabase.from('articoli').insert([payload]);
-      if (error) alert(error.message);
+      await supabase.from('articoli').insert([payload]);
     }
 
     setForm({
@@ -70,41 +68,41 @@ export default function Articoli() {
     });
   }
 
-  // ✏️ Modifica riga
+  // Modifica / Elimina
   function editRow(row) {
     setEditingId(row.id);
     setForm(row);
   }
 
-  // ❌ Elimina riga
   async function remove(id) {
-    if (confirm('Eliminare articolo?')) {
-      const { error } = await supabase.from('articoli').delete().eq('id', id);
-      if (error) alert(error.message);
+    if (confirm('Vuoi eliminare questo articolo?')) {
+      await supabase.from('articoli').delete().eq('id', id);
     }
   }
 
   return (
-    <div className="container p-6">
-      <div className="card bg-white p-4 shadow rounded">
-        <h3 className="text-xl font-bold text-[#b30e0e] mb-3">Gestione articoli</h3>
+    <div className="min-h-screen bg-[#f8f9fa] text-[#333] p-6">
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+        <h1 className="text-2xl font-bold text-[#B30E0E] mb-6">
+          👕 Gestione articoli
+        </h1>
 
+        {/* FORM */}
         <form
           onSubmit={add}
-          className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-6"
-          style={{ alignItems: 'center' }}
+          className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-8"
         >
           <input
             required
             placeholder="Nome capo"
             value={form.nome}
             onChange={e => setForm({ ...form, nome: e.target.value })}
-            className="border p-2 rounded"
+            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <select
             value={form.tipo}
             onChange={e => setForm({ ...form, tipo: e.target.value })}
-            className="border p-2 rounded"
+            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           >
             <option>T-shirt/Polo</option>
             <option>Felpa</option>
@@ -117,93 +115,94 @@ export default function Articoli() {
             placeholder="Taglia"
             value={form.taglia}
             onChange={e => setForm({ ...form, taglia: e.target.value })}
-            className="border p-2 rounded"
+            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
             placeholder="Fornitore"
             value={form.fornitore}
             onChange={e => setForm({ ...form, fornitore: e.target.value })}
-            className="border p-2 rounded"
+            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
             placeholder="Codice fornitore"
             value={form.codice_fornitore}
             onChange={e => setForm({ ...form, codice_fornitore: e.target.value })}
-            className="border p-2 rounded"
+            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
             placeholder="Quantità"
             type="number"
             value={form.quantita}
             onChange={e => setForm({ ...form, quantita: e.target.value })}
-            className="border p-2 rounded"
+            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
-            placeholder="Valore unitario €"
+            placeholder="Valore €"
             type="number"
             step="0.01"
             value={form.valore}
             onChange={e => setForm({ ...form, valore: e.target.value })}
-            className="border p-2 rounded"
+            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
           <input
-            placeholder="URL foto (opzionale)"
+            placeholder="URL foto"
             value={form.foto_url}
             onChange={e => setForm({ ...form, foto_url: e.target.value })}
-            className="border p-2 rounded"
+            className="border p-2 rounded-lg shadow-sm focus:ring-2 focus:ring-[#B30E0E] outline-none"
           />
+
           <button
-            className="bg-[#b30e0e] text-white rounded p-2 hover:bg-[#8b0c0c] transition"
-            style={{ gridColumn: '1/-1' }}
+            className="col-span-full bg-[#B30E0E] hover:bg-[#8b0c0c] text-white font-semibold py-2 px-4 rounded-lg shadow transition"
           >
-            {editingId ? '💾 Salva modifiche' : '➕ Aggiungi'}
+            {editingId ? '💾 Salva modifiche' : '➕ Aggiungi articolo'}
           </button>
         </form>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-[#b30e0e] text-white">
+        {/* TABELLA */}
+        <div className="overflow-x-auto bg-white rounded-xl border border-gray-200 shadow-sm">
+          <table className="min-w-full text-sm">
+            <thead className="bg-[#B30E0E] text-white text-center">
               <tr>
-                <th className="p-2">ID</th>
+                <th className="p-3">ID</th>
                 <th>Foto</th>
                 <th>Nome</th>
                 <th>Tipo</th>
                 <th>Taglia</th>
-                <th>Quantità</th>
+                <th>Q.tà</th>
                 <th>Valore</th>
                 <th>Azioni</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.id} className="border-t hover:bg-gray-50">
-                  <td className="p-2 text-center">{r.id}</td>
-                  <td className="p-2 text-center">
+                <tr key={r.id} className="border-t hover:bg-[#f9f9f9] text-center">
+                  <td className="p-2">{r.id}</td>
+                  <td className="p-2">
                     {r.foto_url ? (
                       <img
                         src={r.foto_url}
-                        alt="foto articolo"
-                        style={{ width: 50, borderRadius: 6, margin: '0 auto' }}
+                        alt="foto"
+                        className="h-12 w-auto mx-auto rounded-md shadow-sm"
                       />
                     ) : (
-                      '—'
+                      <span className="text-gray-400">—</span>
                     )}
                   </td>
                   <td>{r.nome}</td>
                   <td>{r.tipo}</td>
                   <td>{r.taglia}</td>
-                  <td className="text-center">{r.quantita}</td>
-                  <td className="text-center">€ {(r.valore || 0).toLocaleString('it-IT')}</td>
-                  <td className="text-center space-x-2">
+                  <td>{r.quantita}</td>
+                  <td>€ {(r.valore || 0).toLocaleString('it-IT')}</td>
+                  <td>
                     <button
                       onClick={() => editRow(r)}
-                      className="text-blue-600 hover:text-blue-800"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded mr-2"
                     >
                       ✏️
                     </button>
                     <button
                       onClick={() => remove(r.id)}
-                      className="text-red-600 hover:text-red-800"
+                      className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded"
                     >
                       ❌
                     </button>
@@ -212,7 +211,7 @@ export default function Articoli() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="text-center p-4 text-gray-500">
+                  <td colSpan="8" className="text-center p-6 text-gray-500">
                     Nessun articolo presente
                   </td>
                 </tr>
