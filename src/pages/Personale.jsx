@@ -12,7 +12,6 @@ export default function Personale() {
     gilet: "",
     note: "",
     attivo: true,
-    prezzo_unitari: ""
   });
 
   // 🔁 Carica tutti i dipendenti
