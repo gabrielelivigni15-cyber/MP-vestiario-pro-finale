@@ -11,10 +11,10 @@ export default function Personale() {
     pantaloni: "",
     gilet: "",
     note: "",
-    attivo: true,
+    attivo: true
   });
 
-  // 🔁 Carica tutti i dipendenti
+  // 🔁 Carica tutto il personale
   async function load() {
     const { data, error } = await supabase
       .from("personale")
@@ -31,7 +31,7 @@ export default function Personale() {
     load();
   }, []);
 
-  // 🔥 Realtime MGX
+  // 🔥 Realtime per aggiornamento automatico
   useEffect(() => {
     const ch = supabase
       .channel("public:personale")
@@ -41,7 +41,7 @@ export default function Personale() {
     return () => supabase.removeChannel(ch);
   }, []);
 
-  // ➕ Aggiungi / Modifica
+  // ➕ Aggiungi o modifica dipendente
   async function onSubmit(e) {
     e.preventDefault();
 
@@ -52,8 +52,7 @@ export default function Personale() {
       pantaloni: form.pantaloni?.trim() || "",
       gilet: form.gilet?.trim() || "",
       note: form.note?.trim() || "",
-      attivo: form.attivo,
-      prezzo_unitari: form.prezzo_unitari ? parseFloat(form.prezzo_unitari) : null
+      attivo: form.attivo
     };
 
     if (editingId) {
@@ -78,8 +77,7 @@ export default function Personale() {
       pantaloni: "",
       gilet: "",
       note: "",
-      attivo: true,
-      prezzo_unitari: ""
+      attivo: true
     });
     await load();
   }
@@ -94,8 +92,7 @@ export default function Personale() {
       pantaloni: r.pantaloni || "",
       gilet: r.gilet || "",
       note: r.note || "",
-      attivo: r.attivo ?? true,
-      prezzo_unitari: r.prezzo_unitari ?? ""
+      attivo: r.attivo ?? true
     });
   }
 
@@ -117,7 +114,7 @@ export default function Personale() {
 
         <form
           onSubmit={onSubmit}
-          style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}
+          style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}
         >
           <input
             required
@@ -150,12 +147,6 @@ export default function Personale() {
             value={form.note}
             onChange={(e) => setForm({ ...form, note: e.target.value })}
           />
-          <input
-            type="number"
-            placeholder="Prezzo unitario (€)"
-            value={form.prezzo_unitari}
-            onChange={(e) => setForm({ ...form, prezzo_unitari: e.target.value })}
-          />
           <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <input
               type="checkbox"
@@ -164,6 +155,7 @@ export default function Personale() {
             />
             Attivo
           </label>
+
           <div style={{ gridColumn: "1/-1", textAlign: "right" }}>
             <button className="btn">
               {editingId ? "💾 Salva modifiche" : "➕ Aggiungi"}
@@ -185,7 +177,6 @@ export default function Personale() {
               <th>Gilet</th>
               <th>Note</th>
               <th>Attivo</th>
-              <th>Prezzo (€)</th>
               <th>Azioni</th>
             </tr>
           </thead>
@@ -200,7 +191,6 @@ export default function Personale() {
                 <td>{r.gilet}</td>
                 <td>{r.note}</td>
                 <td>{r.attivo ? "✅" : "❌"}</td>
-                <td>{r.prezzo_unitari ? `${r.prezzo_unitari} €` : "-"}</td>
                 <td>
                   <button className="btn secondary" onClick={() => editRow(r)}>
                     ✏️ Modifica
@@ -213,7 +203,7 @@ export default function Personale() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan="10" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                <td colSpan="9" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
                   Nessun dipendente presente
                 </td>
               </tr>
