@@ -5,9 +5,15 @@ export default function Assegna() {
   const [articoli, setArticoli] = useState([])
   const [persone, setPersone] = useState([])
   const [storico, setStorico] = useState([])
-  const [form, setForm] = useState({ id_persona: '', id_articolo: '', prezzo_unitario: '', quantita: 1 })
+  const [filtroStagione, setFiltroStagione] = useState('')
+  const [form, setForm] = useState({
+    id_persona: '',
+    id_articolo: '',
+    prezzo_unitario: '',
+    quantita: 1,
+  })
 
-  // Carica dati iniziali
+  // Caricamento dati
   async function load() {
     const { data: a } = await supabase.from('articoli').select('*').order('nome')
     const { data: p } = await supabase.from('personale').select('*').order('nome')
@@ -17,9 +23,11 @@ export default function Assegna() {
     setStorico(s || [])
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [])
 
-  // Realtime aggiornamenti automatici
+  // Aggiornamento in tempo reale
   useEffect(() => {
     const ch = supabase
       .channel('rt_ass')
@@ -33,11 +41,11 @@ export default function Assegna() {
     e.preventDefault()
     const art = articoli.find(a => String(a.id) === String(form.id_articolo))
     if (!art) {
-      alert('⚠️ Seleziona articolo')
+      alert('⚠️ Seleziona un articolo valido.')
       return
     }
     if ((art.quantita || 0) < Number(form.quantita)) {
-      alert('❌ Scorta insufficiente per questo articolo')
+      alert('❌ Scorta insufficiente per questo articolo.')
       return
     }
 
@@ -46,19 +54,19 @@ export default function Assegna() {
       id_articolo: Number(form.id_articolo),
       quantita: Number(form.quantita),
       prezzo_unitario: Number(form.prezzo_unitario || 0),
-      data_consegna: new Date().toISOString().split('T')[0]
+      data_consegna: new Date().toISOString().split('T')[0],
     }
 
     const { error } = await supabase.from('assegnazioni').insert(payload)
     if (error) {
-      alert(error.message)
+      alert('Errore durante il salvataggio:\n' + error.message)
       return
     }
 
     // Riduci scorta automatica
-    const { error: updErr } = await supabase.rpc('decrementa_scorta', { 
-      p_articolo_id: Number(form.id_articolo), 
-      p_qta: Number(form.quantita)
+    const { error: updErr } = await supabase.rpc('decrementa_scorta', {
+      p_articolo_id: Number(form.id_articolo),
+      p_qta: Number(form.quantita),
     })
     if (updErr) {
       await supabase
@@ -72,30 +80,47 @@ export default function Assegna() {
 
   // Elimina assegnazione
   async function eliminaAssegnazione(row) {
-    if (!confirm('Eliminare assegnazione?')) return
+    if (!confirm('Eliminare questa assegnazione?')) return
     const { error } = await supabase.from('assegnazioni').delete().eq('id', row.id)
     if (error) {
-      alert(error.message)
+      alert('Errore durante l\'eliminazione:\n' + error.message)
       return
     }
     const art = articoli.find(a => a.id === row.id_articolo)
-    if (art)
+    if (art) {
       await supabase
         .from('articoli')
         .update({ quantita: (art.quantita || 0) + (row.quantita || 1) })
         .eq('id', art.id)
+    }
   }
+
+  // Applica filtro stagionale
+  const articoliFiltrati = articoli.filter(a => !filtroStagione || a.stagione === filtroStagione)
 
   return (
     <div className="container">
       <div className="card">
         <h3>Nuova assegnazione</h3>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <select
+            value={filtroStagione}
+            onChange={e => setFiltroStagione(e.target.value)}
+            style={{ padding: 6, borderRadius: 6 }}
+          >
+            <option value="">Tutte le stagioni</option>
+            <option value="estivo">Solo estivi</option>
+            <option value="invernale">Solo invernali</option>
+          </select>
+        </div>
+
         <form
           onSubmit={creaAssegnazione}
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr 1fr 0.5fr auto',
-            gap: 8
+            gap: 8,
           }}
         >
           <select
@@ -117,9 +142,9 @@ export default function Assegna() {
             onChange={e => setForm({ ...form, id_articolo: e.target.value })}
           >
             <option value="">Seleziona articolo…</option>
-            {articoli.map(a => (
+            {articoliFiltrati.map(a => (
               <option key={a.id} value={a.id}>
-                {a.nome} (Q.tà {a.quantita})
+                {a.nome} — {a.stagione === 'invernale' ? '🧥 Invernale' : '👕 Estivo'} (Q.tà {a.quantita})
               </option>
             ))}
           </select>
@@ -166,7 +191,12 @@ export default function Assegna() {
                 <tr key={r.id}>
                   <td>{r.id}</td>
                   <td>{p?.nome || r.id_persona}</td>
-                  <td>{a?.nome || r.id_articolo}</td>
+                  <td>
+                    {a?.nome || r.id_articolo}{' '}
+                    <small style={{ color: '#888' }}>
+                      ({a?.stagione === 'invernale' ? 'Invernale' : 'Estivo'})
+                    </small>
+                  </td>
                   <td>{r.quantita}</td>
                   <td>{r.data_consegna}</td>
                   <td>
