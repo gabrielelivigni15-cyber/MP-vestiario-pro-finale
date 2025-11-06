@@ -12,7 +12,6 @@ export default function Assegna() {
   });
   const [editId, setEditId] = useState(null);
 
-  // --- FETCH DATI ---
   useEffect(() => {
     loadData();
 
@@ -37,13 +36,10 @@ export default function Assegna() {
     setAssegnazioni(ass || []);
   }
 
-  // --- SALVA / MODIFICA ---
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!formData.id_persona || !formData.id_articolo) {
-      alert("Seleziona persona e articolo");
-      return;
-    }
+    if (!formData.id_persona || !formData.id_articolo)
+      return alert("Seleziona personale e articolo");
 
     const articolo = articoli.find((a) => a.id === Number(formData.id_articolo));
     if (!articolo) return alert("Articolo non trovato");
@@ -86,7 +82,6 @@ export default function Assegna() {
     loadData();
   }
 
-  // --- ELIMINA ---
   async function handleDelete(a) {
     if (!confirm("Eliminare questa assegnazione?")) return;
 
@@ -102,7 +97,6 @@ export default function Assegna() {
     loadData();
   }
 
-  // --- MODIFICA ---
   function handleEdit(a) {
     setEditId(a.id);
     setFormData({
@@ -114,105 +108,112 @@ export default function Assegna() {
 
   return (
     <div className="container">
-      {/* --- FORM ASSEGNAZIONE --- */}
+      {/* --- CARD GESTIONE ASSEGNAZIONI --- */}
       <div className="card">
-        <h3>{editId ? "✏️ Modifica Assegnazione" : "➕ Nuova Assegnazione"}</h3>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Dipendente</label>
-            <select
-              value={formData.id_persona}
-              onChange={(e) =>
-                setFormData({ ...formData, id_persona: e.target.value })
-              }
-              required
-            >
-              <option value="">Seleziona personale</option>
-              {personale.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </select>
-          </div>
+        <h3>Gestione Assegnazioni</h3>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "10px",
+            alignItems: "center",
+          }}
+        >
+          <select
+            value={formData.id_persona}
+            onChange={(e) =>
+              setFormData({ ...formData, id_persona: e.target.value })
+            }
+            required
+          >
+            <option value="">Seleziona personale</option>
+            {personale.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
+          </select>
 
-          <div className="form-group">
-            <label>Articolo</label>
-            <select
-              value={formData.id_articolo}
-              onChange={(e) =>
-                setFormData({ ...formData, id_articolo: e.target.value })
-              }
-              required
-            >
-              <option value="">Seleziona articolo</option>
-              {articoli.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nome_capo} ({a.quantita} disp.)
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={formData.id_articolo}
+            onChange={(e) =>
+              setFormData({ ...formData, id_articolo: e.target.value })
+            }
+            required
+          >
+            <option value="">Seleziona articolo</option>
+            {articoli.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nome_capo} ({a.quantita} disp.)
+              </option>
+            ))}
+          </select>
 
-          <div className="form-group">
-            <label>Quantità</label>
-            <input
-              type="number"
-              value={formData.quantita}
-              onChange={(e) =>
-                setFormData({ ...formData, quantita: Number(e.target.value) })
-              }
-              min="1"
-              required
-            />
-          </div>
+          <input
+            type="number"
+            min="1"
+            value={formData.quantita}
+            onChange={(e) =>
+              setFormData({ ...formData, quantita: Number(e.target.value) })
+            }
+            placeholder="Quantità"
+            required
+          />
 
-          <button type="submit" className="btn">
-            {editId ? "💾 Salva modifiche" : "➕ Assegna"}
+          <button type="submit" className="btn red" style={{ width: "fit-content" }}>
+            {editId ? "💾 Salva" : "➕ Assegna"}
           </button>
         </form>
       </div>
 
-      {/* --- STORICO --- */}
-      <table className="table" style={{ marginTop: 20 }}>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Dipendente</th>
-            <th>Articolo</th>
-            <th>Quantità</th>
-            <th>Data consegna</th>
-            <th>Azioni</th>
-          </tr>
-        </thead>
-        <tbody>
-          {assegnazioni.length === 0 ? (
+      {/* --- ELENCO ASSEGNAZIONI --- */}
+      <div className="card" style={{ marginTop: 20 }}>
+        <h3>Elenco Assegnazioni</h3>
+        <table className="table">
+          <thead>
             <tr>
-              <td colSpan="6" style={{ textAlign: "center", padding: 12 }}>
-                Nessuna assegnazione presente
-              </td>
+              <th>ID</th>
+              <th>Dipendente</th>
+              <th>Articolo</th>
+              <th>Quantità</th>
+              <th>Data consegna</th>
+              <th>Azioni</th>
             </tr>
-          ) : (
-            assegnazioni.map((a) => (
-              <tr key={a.id}>
-                <td>{a.id}</td>
-                <td>{a.personale?.nome || "-"}</td>
-                <td>{a.articoli?.nome_capo || "-"}</td>
-                <td>{a.quantita}</td>
-                <td>{a.data_consegna}</td>
-                <td>
-                  <button className="btn secondary" onClick={() => handleEdit(a)}>
-                    ✏️
-                  </button>{" "}
-                  <button className="btn secondary" onClick={() => handleDelete(a)}>
-                    ❌
-                  </button>
+          </thead>
+          <tbody>
+            {assegnazioni.length === 0 ? (
+              <tr>
+                <td colSpan="6" style={{ textAlign: "center", padding: "12px" }}>
+                  Nessuna assegnazione presente
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              assegnazioni.map((a) => (
+                <tr key={a.id}>
+                  <td>{a.id}</td>
+                  <td>{a.personale?.nome || "-"}</td>
+                  <td>{a.articoli?.nome_capo || "-"}</td>
+                  <td>{a.quantita}</td>
+                  <td>{a.data_consegna}</td>
+                  <td>
+                    <button
+                      className="btn orange"
+                      onClick={() => handleEdit(a)}
+                      style={{ marginRight: 8 }}
+                    >
+                      ✏️ Modifica
+                    </button>
+                    <button className="btn red" onClick={() => handleDelete(a)}>
+                      ❌ Elimina
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
