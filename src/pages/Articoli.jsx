@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { Pencil, X, Plus } from 'lucide-react' // icone coerenti con la UI Medipower
 
 export default function Articoli() {
   const [articoli, setArticoli] = useState([])
@@ -49,23 +50,23 @@ export default function Articoli() {
   }
 
   return (
-    <div className="p-6">
-      {/* CARD GESTIONE ARTICOLI */}
-      <div className="bg-white border rounded-xl p-5 shadow-sm mb-6">
-        <h3 className="text-lg font-semibold mb-3 text-gray-800">Gestione articoli</h3>
+    <div className="p-6 space-y-6">
+      {/* GESTIONE ARTICOLI */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800">Gestione articoli</h3>
 
-        <div className="flex flex-wrap gap-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
           <input
             type="text"
             placeholder="Nome articolo"
-            className="border rounded-lg px-3 py-2 flex-1 min-w-[150px]"
+            className="border rounded-lg px-3 py-2"
             value={form.nome}
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
           />
           <input
             type="number"
             placeholder="Prezzo"
-            className="border rounded-lg px-3 py-2 w-32"
+            className="border rounded-lg px-3 py-2"
             value={form.prezzo}
             onChange={(e) => setForm({ ...form, prezzo: e.target.value })}
           />
@@ -80,9 +81,10 @@ export default function Articoli() {
 
           <button
             onClick={salvaArticolo}
-            className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm"
+            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm"
           >
-            {editing ? 'Aggiorna' : '+ Aggiungi'}
+            <Plus size={18} />
+            {editing ? 'Aggiorna' : 'Aggiungi'}
           </button>
 
           {editing && (
@@ -91,15 +93,14 @@ export default function Articoli() {
                 setEditing(null)
                 setForm({ nome: '', prezzo: '', stagione: 'Estiva' })
               }}
-              className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg"
+              className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg shadow-sm"
             >
               Annulla
             </button>
           )}
         </div>
 
-        {/* FILTRI */}
-        <div className="flex flex-wrap gap-4 items-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex items-center gap-2">
             <label className="font-semibold text-sm">Filtra per stagione:</label>
             <select
@@ -129,11 +130,11 @@ export default function Articoli() {
         </div>
       </div>
 
-      {/* CARD ELENCO ARTICOLI */}
-      <div className="bg-white border rounded-xl p-5 shadow-sm">
-        <h3 className="text-lg font-semibold mb-3 text-gray-800">Elenco articoli</h3>
+      {/* ELENCO ARTICOLI */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800">Elenco articoli</h3>
         <div className="overflow-x-auto">
-          <table className="min-w-full border text-sm text-gray-800">
+          <table className="min-w-full text-sm border text-gray-800">
             <thead className="bg-gray-100">
               <tr>
                 <th className="border px-3 py-2">ID</th>
@@ -153,18 +154,22 @@ export default function Articoli() {
                   </td>
                   <td className="border px-3 py-2 text-center">{a.stagione}</td>
                   <td className="border px-3 py-2 text-center">
-                    <button
-                      onClick={() => modifica(a)}
-                      className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-md text-sm mr-2"
-                    >
-                      Modifica
-                    </button>
-                    <button
-                      onClick={() => elimina(a.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm"
-                    >
-                      Elimina
-                    </button>
+                    <div className="flex justify-center gap-2">
+                      <button
+                        onClick={() => modifica(a)}
+                        className="flex items-center gap-1 bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-md text-sm font-medium"
+                      >
+                        <Pencil size={15} />
+                        Modifica
+                      </button>
+                      <button
+                        onClick={() => elimina(a.id)}
+                        className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm font-medium"
+                      >
+                        <X size={15} />
+                        Elimina
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
