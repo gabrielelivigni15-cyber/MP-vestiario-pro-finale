@@ -1,31 +1,38 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.js";
 
-export default function Assegna() {
+function Assegna() {
+  const [gruppi, setGruppi] = useState([]);
   const [articoli, setArticoli] = useState([]);
   const [persone, setPersone] = useState([]);
   const [storico, setStorico] = useState([]);
   const [stagione, setStagione] = useState("");
+
   const [form, setForm] = useState({
     id_persona: "",
+    gruppo: "",
     id_articolo: "",
     quantita: 1,
-    taglia: "",
   });
 
   // 🔁 Carica dati principali
   async function load() {
-    let queryArticoli = supabase.from("articoli").select("*").order("nome");
-    if (stagione) queryArticoli = queryArticoli.eq("stagione", stagione);
-
-    const { data: a } = await queryArticoli;
+    const { data: a } = await supabase.from("articoli").select("*").order("nome");
     const { data: p } = await supabase.from("personale").select("*").order("nome");
     const { data: s } = await supabase
       .from("assegnazioni")
       .select("*")
       .order("id", { ascending: false });
 
-    setArticoli(a || []);
+    // 🔹 Filtra stagionale
+    let articoliFiltrati = a || [];
+    if (stagione) articoliFiltrati = articoliFiltrati.filter((x) => x.stagione === stagione);
+
+    // 🔹 Gruppi unici
+    const gruppiUnici = [...new Set(articoliFiltrati.map((x) => x.gruppo).filter(Boolean))];
+
+    setArticoli(articoliFiltrati);
+    setGruppi(gruppiUnici);
     setPersone(p || []);
     setStorico(s || []);
   }
@@ -37,19 +44,18 @@ export default function Assegna() {
   // 🧮 Assegna articolo
   async function assegna(e) {
     e.preventDefault();
+
     if (!form.id_persona || !form.id_articolo)
-      return alert("Seleziona persona e articolo");
+      return alert("Seleziona persona e variante");
     if (form.quantita <= 0) return alert("Quantità non valida");
 
     const articolo = articoli.find((a) => a.id === parseInt(form.id_articolo));
-    if (!articolo) return alert("Articolo non trovato");
+    if (!articolo) return alert("Variante non trovata");
     if (articolo.quantita < form.quantita)
       return alert(`Quantità insufficiente. Disponibili: ${articolo.quantita}`);
 
-    // 🔹 Calcola nuovo stock
     const nuovaQuantita = articolo.quantita - form.quantita;
 
-    // 🔹 Inserisci assegnazione
     const payload = {
       id_persona: parseInt(form.id_persona),
       id_articolo: parseInt(form.id_articolo),
@@ -61,15 +67,13 @@ export default function Assegna() {
     const { error: insertError } = await supabase.from("assegnazioni").insert([payload]);
     if (insertError) return alert(insertError.message);
 
-    // 🔹 Aggiorna quantità articolo
     const { error: updateError } = await supabase
       .from("articoli")
       .update({ quantita: nuovaQuantita })
       .eq("id", articolo.id);
     if (updateError) return alert(updateError.message);
 
-    // 🔹 Reset form e ricarica
-    setForm({ id_persona: "", id_articolo: "", quantita: 1, taglia: "" });
+    setForm({ id_persona: "", gruppo: "", id_articolo: "", quantita: 1 });
     await load();
   }
 
@@ -77,16 +81,14 @@ export default function Assegna() {
   async function annullaAssegnazione(assegnazione) {
     if (
       !confirm(
-        `Vuoi annullare l’assegnazione #${assegnazione.id}? Questa operazione riporterà la quantità in magazzino.`
+        `Vuoi annullare l’assegnazione #${assegnazione.id}? Verrà ripristinata la quantità.`
       )
     )
       return;
 
     const articolo = articoli.find((a) => a.id === assegnazione.id_articolo);
-    if (!articolo)
-      return alert("Articolo collegato non trovato, impossibile aggiornare quantità.");
+    if (!articolo) return alert("Articolo non trovato nel magazzino.");
 
-    // 🔹 Riaggiungi quantità all’articolo
     const nuovaQuantita = articolo.quantita + assegnazione.quantita;
     const { error: updateError } = await supabase
       .from("articoli")
@@ -94,7 +96,6 @@ export default function Assegna() {
       .eq("id", articolo.id);
     if (updateError) return alert(updateError.message);
 
-    // 🔹 Elimina assegnazione
     const { error: deleteError } = await supabase
       .from("assegnazioni")
       .delete()
@@ -102,8 +103,13 @@ export default function Assegna() {
     if (deleteError) return alert(deleteError.message);
 
     await load();
-    alert("Assegnazione annullata con successo ✅");
+    alert("Assegnazione annullata ✅");
   }
+
+  // 🔽 Varianti del gruppo selezionato
+  const varianti = articoli.filter((a) => a.gruppo === form.gruppo);
+
+  const articoloSelezionato = articoli.find((a) => a.id === parseInt(form.id_articolo));
 
   return (
     <div className="container">
@@ -143,33 +149,36 @@ export default function Assegna() {
             ))}
           </select>
 
+          {/* SELEZIONE GRUPPO */}
           <select
             required
-            value={form.id_articolo}
-            onChange={(e) => {
-              const articolo = articoli.find((a) => a.id === parseInt(e.target.value));
-              setForm({
-                ...form,
-                id_articolo: e.target.value,
-                taglia: articolo?.taglia || "",
-              });
-            }}
+            value={form.gruppo}
+            onChange={(e) =>
+              setForm({ ...form, gruppo: e.target.value, id_articolo: "" })
+            }
           >
-            <option value="">Seleziona articolo</option>
-            {articoli.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nome} ({a.tipo}) – {a.stagione} [{a.quantita} disp.]
+            <option value="">Seleziona gruppo</option>
+            {gruppi.map((g) => (
+              <option key={g} value={g}>
+                {g}
               </option>
             ))}
           </select>
 
-          <input
-            type="text"
-            placeholder="Taglia"
-            value={form.taglia}
-            readOnly
-            style={{ backgroundColor: "#f3f4f6", cursor: "not-allowed" }}
-          />
+          {/* SELEZIONE VARIANTE */}
+          <select
+            required
+            value={form.id_articolo}
+            onChange={(e) => setForm({ ...form, id_articolo: e.target.value })}
+            disabled={!form.gruppo}
+          >
+            <option value="">Seleziona variante (taglia)</option>
+            {varianti.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.nome} – {v.taglia || "-"} ({v.quantita} disp.)
+              </option>
+            ))}
+          </select>
 
           <input
             type="number"
@@ -183,6 +192,41 @@ export default function Assegna() {
             <button className="btn">➕ Assegna</button>
           </div>
         </form>
+
+        {/* MOSTRA INFO VARIANTE SELEZIONATA */}
+        {articoloSelezionato && (
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              background: "#f9fafb",
+              borderRadius: 8,
+              padding: 10,
+              border: "1px solid #ddd",
+            }}
+          >
+            {articoloSelezionato.foto_url && (
+              <img
+                src={articoloSelezionato.foto_url}
+                alt="foto"
+                style={{
+                  width: 70,
+                  height: 70,
+                  objectFit: "cover",
+                  borderRadius: 6,
+                  border: "1px solid #ccc",
+                }}
+              />
+            )}
+            <div>
+              <b>{articoloSelezionato.nome}</b> ({articoloSelezionato.taglia})
+              <div>Disponibili: {articoloSelezionato.quantita}</div>
+              <div>Prezzo: {articoloSelezionato.prezzo_unitario} €</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* --- CARD STORICO --- */}
@@ -196,10 +240,9 @@ export default function Assegna() {
               <th>Persona</th>
               <th>Articolo</th>
               <th>Taglia</th>
-              <th>Tipo</th>
-              <th>Stagione</th>
+              <th>Gruppo</th>
               <th>Quantità</th>
-              <th>Prezzo Unitario</th>
+              <th>Prezzo</th>
               <th>Totale</th>
               <th>Azioni</th>
             </tr>
@@ -215,8 +258,7 @@ export default function Assegna() {
                   <td>{persona?.nome || "-"}</td>
                   <td>{articolo?.nome || "-"}</td>
                   <td>{articolo?.taglia || "-"}</td>
-                  <td>{articolo?.tipo || "-"}</td>
-                  <td>{articolo?.stagione || "-"}</td>
+                  <td>{articolo?.gruppo || "-"}</td>
                   <td>{r.quantita}</td>
                   <td>
                     {r.prezzo_unitario
@@ -241,7 +283,7 @@ export default function Assegna() {
             })}
             {storico.length === 0 && (
               <tr>
-                <td colSpan="11" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                <td colSpan="10" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
                   Nessuna assegnazione registrata
                 </td>
               </tr>
@@ -252,3 +294,5 @@ export default function Assegna() {
     </div>
   );
 }
+
+export default Assegna;
