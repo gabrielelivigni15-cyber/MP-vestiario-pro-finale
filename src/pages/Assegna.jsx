@@ -9,11 +9,11 @@ export default function Assegna() {
   const [form, setForm] = useState({
     id_persona: "",
     id_articolo: "",
-    prezzo_unitari: "",
     quantita: 1,
+    taglia: "",
   });
 
-  // 🔁 Carica i dati principali
+  // 🔁 Carica dati principali
   async function load() {
     let queryArticoli = supabase.from("articoli").select("*").order("nome");
     if (stagione) queryArticoli = queryArticoli.eq("stagione", stagione);
@@ -41,17 +41,19 @@ export default function Assegna() {
       return alert("Seleziona persona e articolo");
     if (form.quantita <= 0) return alert("Quantità non valida");
 
-    // recupera l'articolo
     const articolo = articoli.find((a) => a.id === parseInt(form.id_articolo));
     if (!articolo) return alert("Articolo non trovato");
     if (articolo.quantita < form.quantita)
       return alert(`Quantità insufficiente. Disponibili: ${articolo.quantita}`);
 
-    // Inserisci assegnazione
+    // 🔹 Calcola nuovo stock
+    const nuovaQuantita = articolo.quantita - form.quantita;
+
+    // 🔹 Inserisci assegnazione
     const payload = {
       id_persona: parseInt(form.id_persona),
       id_articolo: parseInt(form.id_articolo),
-      prezzo_unitari: parseFloat(form.prezzo_unitari) || 0,
+      prezzo_unitari: articolo.prezzo_unitario || 0,
       quantita: parseInt(form.quantita),
       data_consegna: new Date().toISOString().split("T")[0],
     };
@@ -59,15 +61,15 @@ export default function Assegna() {
     const { error: insertError } = await supabase.from("assegnazioni").insert([payload]);
     if (insertError) return alert(insertError.message);
 
-    // Decrementa quantità articolo
-    const nuovaQuantita = articolo.quantita - form.quantita;
+    // 🔹 Aggiorna quantità articolo
     const { error: updateError } = await supabase
       .from("articoli")
       .update({ quantita: nuovaQuantita })
       .eq("id", articolo.id);
     if (updateError) return alert(updateError.message);
 
-    setForm({ id_persona: "", id_articolo: "", prezzo_unitari: "", quantita: 1 });
+    // 🔹 Reset form e ricarica
+    setForm({ id_persona: "", id_articolo: "", quantita: 1, taglia: "" });
     await load();
   }
 
@@ -117,24 +119,26 @@ export default function Assegna() {
               setForm({
                 ...form,
                 id_articolo: e.target.value,
-                prezzo_unitari: articolo?.prezzo_unitario || "",
+                taglia: articolo?.taglia || "",
               });
             }}
           >
             <option value="">Seleziona articolo</option>
             {articoli.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.nome} ({a.tipo}) – {a.stagione}
+                {a.nome} ({a.tipo}) – {a.stagione} [{a.quantita} disp.]
               </option>
             ))}
           </select>
 
           <input
-            type="number"
-            placeholder="Prezzo unitario (€)"
-            value={form.prezzo_unitari}
-            onChange={(e) => setForm({ ...form, prezzo_unitari: e.target.value })}
+            type="text"
+            placeholder="Taglia"
+            value={form.taglia}
+            readOnly
+            style={{ backgroundColor: "#f3f4f6", cursor: "not-allowed" }}
           />
+
           <input
             type="number"
             placeholder="Quantità"
@@ -159,6 +163,7 @@ export default function Assegna() {
               <th>Data</th>
               <th>Persona</th>
               <th>Articolo</th>
+              <th>Taglia</th>
               <th>Tipo</th>
               <th>Stagione</th>
               <th>Quantità</th>
@@ -176,17 +181,18 @@ export default function Assegna() {
                   <td>{r.data_consegna || "-"}</td>
                   <td>{persona?.nome || "-"}</td>
                   <td>{articolo?.nome || "-"}</td>
+                  <td>{articolo?.taglia || "-"}</td>
                   <td>{articolo?.tipo || "-"}</td>
                   <td>{articolo?.stagione || "-"}</td>
                   <td>{r.quantita}</td>
                   <td>
-                    {r.prezzo_unitari
-                      ? `${parseFloat(r.prezzo_unitari).toFixed(2)} €`
+                    {articolo?.prezzo_unitario
+                      ? `${parseFloat(articolo.prezzo_unitario).toFixed(2)} €`
                       : "-"}
                   </td>
                   <td>
-                    {r.prezzo_unitari && r.quantita
-                      ? `${(parseFloat(r.prezzo_unitari) * r.quantita).toFixed(2)} €`
+                    {articolo?.prezzo_unitario && r.quantita
+                      ? `${(parseFloat(articolo.prezzo_unitario) * r.quantita).toFixed(2)} €`
                       : "-"}
                   </td>
                 </tr>
@@ -194,7 +200,7 @@ export default function Assegna() {
             })}
             {storico.length === 0 && (
               <tr>
-                <td colSpan="9" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                <td colSpan="10" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
                   Nessuna assegnazione registrata
                 </td>
               </tr>
