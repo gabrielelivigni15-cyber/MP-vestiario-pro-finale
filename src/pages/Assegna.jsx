@@ -5,19 +5,17 @@ export default function Assegna() {
   const [articoli, setArticoli] = useState([])
   const [persone, setPersone] = useState([])
   const [storico, setStorico] = useState([])
-  const [filtroStagione, setFiltroStagione] = useState('')
-  const [form, setForm] = useState({
-    id_persona: '',
-    id_articolo: '',
-    prezzo_unitario: '',
-    quantita: 1,
-  })
+  const [stagione, setStagione] = useState('') // filtro stagione
+  const [form, setForm] = useState({ id_persona: '', id_articolo: '', prezzo_unitario: '' })
 
-  // Caricamento dati
   async function load() {
-    const { data: a } = await supabase.from('articoli').select('*').order('nome')
+    let queryArticoli = supabase.from('articoli').select('*').order('nome')
+    if (stagione) queryArticoli = queryArticoli.eq('stagione', stagione)
+
+    const { data: a } = await queryArticoli
     const { data: p } = await supabase.from('personale').select('*').order('nome')
     const { data: s } = await supabase.from('assegnazioni').select('*').order('id', { ascending: false })
+
     setArticoli(a || [])
     setPersone(p || [])
     setStorico(s || [])
@@ -25,193 +23,99 @@ export default function Assegna() {
 
   useEffect(() => {
     load()
-  }, [])
+  }, [stagione])
 
-  // Aggiornamento in tempo reale
-  useEffect(() => {
-    const ch = supabase
-      .channel('rt_ass')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'assegnazioni' }, load)
-      .subscribe()
-    return () => supabase.removeChannel(ch)
-  }, [])
-
-  // Creazione assegnazione
-  async function creaAssegnazione(e) {
-    e.preventDefault()
-    const art = articoli.find(a => String(a.id) === String(form.id_articolo))
-    if (!art) {
-      alert('⚠️ Seleziona un articolo valido.')
-      return
-    }
-    if ((art.quantita || 0) < Number(form.quantita)) {
-      alert('❌ Scorta insufficiente per questo articolo.')
-      return
-    }
-
-    const payload = {
-      id_persona: Number(form.id_persona),
-      id_articolo: Number(form.id_articolo),
-      quantita: Number(form.quantita),
-      prezzo_unitario: Number(form.prezzo_unitario || 0),
-      data_consegna: new Date().toISOString().split('T')[0],
-    }
-
-    const { error } = await supabase.from('assegnazioni').insert(payload)
-    if (error) {
-      alert('Errore durante il salvataggio:\n' + error.message)
-      return
-    }
-
-    // Riduci scorta automatica
-    const { error: updErr } = await supabase.rpc('decrementa_scorta', {
-      p_articolo_id: Number(form.id_articolo),
-      p_qta: Number(form.quantita),
-    })
-    if (updErr) {
-      await supabase
-        .from('articoli')
-        .update({ quantita: (art.quantita || 0) - Number(form.quantita) })
-        .eq('id', art.id)
-    }
-
-    setForm({ id_persona: '', id_articolo: '', prezzo_unitario: '', quantita: 1 })
+  async function assegna() {
+    if (!form.id_persona || !form.id_articolo) return alert('Seleziona persona e articolo')
+    await supabase.from('assegnazioni').insert([form])
+    setForm({ id_persona: '', id_articolo: '', prezzo_unitario: '' })
+    load()
   }
-
-  // Elimina assegnazione
-  async function eliminaAssegnazione(row) {
-    if (!confirm('Eliminare questa assegnazione?')) return
-    const { error } = await supabase.from('assegnazioni').delete().eq('id', row.id)
-    if (error) {
-      alert('Errore durante l\'eliminazione:\n' + error.message)
-      return
-    }
-    const art = articoli.find(a => a.id === row.id_articolo)
-    if (art) {
-      await supabase
-        .from('articoli')
-        .update({ quantita: (art.quantita || 0) + (row.quantita || 1) })
-        .eq('id', art.id)
-    }
-  }
-
-  // Applica filtro stagionale
-  const articoliFiltrati = articoli.filter(a => !filtroStagione || a.stagione === filtroStagione)
 
   return (
-    <div className="container">
-      <div className="card">
-        <h3>Nuova assegnazione</h3>
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-4">Gestione Assegnazioni Vestiario</h2>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <select
-            value={filtroStagione}
-            onChange={e => setFiltroStagione(e.target.value)}
-            style={{ padding: 6, borderRadius: 6 }}
-          >
-            <option value="">Tutte le stagioni</option>
-            <option value="estivo">Solo estivi</option>
-            <option value="invernale">Solo invernali</option>
-          </select>
-        </div>
-
-        <form
-          onSubmit={creaAssegnazione}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr 0.5fr auto',
-            gap: 8,
-          }}
+      {/* FILTRO STAGIONE */}
+      <div className="mb-4 flex items-center gap-3">
+        <label className="font-medium text-gray-700">Stagione:</label>
+        <select
+          value={stagione}
+          onChange={(e) => setStagione(e.target.value)}
+          className="border rounded-lg p-2 bg-white shadow-sm"
         >
-          <select
-            required
-            value={form.id_persona}
-            onChange={e => setForm({ ...form, id_persona: e.target.value })}
-          >
-            <option value="">Seleziona persona…</option>
-            {persone.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
-
-          <select
-            required
-            value={form.id_articolo}
-            onChange={e => setForm({ ...form, id_articolo: e.target.value })}
-          >
-            <option value="">Seleziona articolo…</option>
-            {articoliFiltrati.map(a => (
-              <option key={a.id} value={a.id}>
-                {a.nome} — {a.stagione === 'invernale' ? '🧥 Invernale' : '👕 Estivo'} (Q.tà {a.quantita})
-              </option>
-            ))}
-          </select>
-
-          <input
-            type="number"
-            min="1"
-            placeholder="Quantità"
-            value={form.quantita}
-            onChange={e => setForm({ ...form, quantita: e.target.value })}
-          />
-
-          <input
-            placeholder="Prezzo unitario (facoltativo)"
-            type="number"
-            step="0.01"
-            value={form.prezzo_unitario}
-            onChange={e => setForm({ ...form, prezzo_unitario: e.target.value })}
-          />
-
-          <button className="btn">Assegna</button>
-        </form>
+          <option value="">Tutte</option>
+          <option value="Estiva">Estiva</option>
+          <option value="Invernale">Invernale</option>
+        </select>
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3>Assegnazioni recenti</h3>
-        <table className="table">
-          <thead>
+      {/* FORM ASSEGNAZIONE */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <select
+          className="border rounded-lg p-2"
+          value={form.id_persona}
+          onChange={(e) => setForm({ ...form, id_persona: e.target.value })}
+        >
+          <option value="">Seleziona persona</option>
+          {persone.map((p) => (
+            <option key={p.id} value={p.id}>{p.nome}</option>
+          ))}
+        </select>
+
+        <select
+          className="border rounded-lg p-2"
+          value={form.id_articolo}
+          onChange={(e) => setForm({ ...form, id_articolo: e.target.value })}
+        >
+          <option value="">Seleziona articolo</option>
+          {articoli.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.nome} ({a.stagione})
+            </option>
+          ))}
+        </select>
+
+        <input
+          type="number"
+          placeholder="Prezzo unitario"
+          className="border rounded-lg p-2 w-36"
+          value={form.prezzo_unitario}
+          onChange={(e) => setForm({ ...form, prezzo_unitario: e.target.value })}
+        />
+
+        <button
+          onClick={assegna}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow"
+        >
+          Assegna
+        </button>
+      </div>
+
+      {/* STORICO */}
+      <h3 className="text-xl font-semibold mb-3">Storico Assegnazioni</h3>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border text-sm">
+          <thead className="bg-gray-100">
             <tr>
-              <th>ID</th>
-              <th>Persona</th>
-              <th>Articolo</th>
-              <th>Quantità</th>
-              <th>Data</th>
-              <th>Prezzo</th>
-              <th />
+              <th className="border px-3 py-2">ID</th>
+              <th className="border px-3 py-2">Persona</th>
+              <th className="border px-3 py-2">Articolo</th>
+              <th className="border px-3 py-2">Stagione</th>
+              <th className="border px-3 py-2">Prezzo</th>
             </tr>
           </thead>
           <tbody>
-            {storico.map(r => {
-              const p = persone.find(x => x.id === r.id_persona)
-              const a = articoli.find(x => x.id === r.id_articolo)
+            {storico.map((r) => {
+              const persona = persone.find((p) => p.id === r.id_persona)
+              const articolo = articoli.find((a) => a.id === r.id_articolo)
               return (
                 <tr key={r.id}>
-                  <td>{r.id}</td>
-                  <td>{p?.nome || r.id_persona}</td>
-                  <td>
-                    {a?.nome || r.id_articolo}{' '}
-                    <small style={{ color: '#888' }}>
-                      ({a?.stagione === 'invernale' ? 'Invernale' : 'Estivo'})
-                    </small>
-                  </td>
-                  <td>{r.quantita}</td>
-                  <td>{r.data_consegna}</td>
-                  <td>
-                    {r.prezzo_unitario
-                      ? '€ ' + Number(r.prezzo_unitario).toLocaleString('it-IT')
-                      : '-'}
-                  </td>
-                  <td>
-                    <button
-                      className="btn secondary"
-                      onClick={() => eliminaAssegnazione(r)}
-                    >
-                      Elimina
-                    </button>
-                  </td>
+                  <td className="border px-3 py-2 text-center">{r.id}</td>
+                  <td className="border px-3 py-2">{persona?.nome || '-'}</td>
+                  <td className="border px-3 py-2">{articolo?.nome || '-'}</td>
+                  <td className="border px-3 py-2 text-center">{articolo?.stagione || '-'}</td>
+                  <td className="border px-3 py-2 text-right">{r.prezzo_unitario} €</td>
                 </tr>
               )
             })}
