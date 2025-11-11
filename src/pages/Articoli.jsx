@@ -1,198 +1,168 @@
-import React, { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase.js'
-import { Pencil, X, Plus } from 'lucide-react'
+import React, { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase.js";
 
 export default function Articoli() {
-  const [articoli, setArticoli] = useState([])
-  const [form, setForm] = useState({ nome: '', prezzo: '', stagione: 'Estiva' })
-  const [editing, setEditing] = useState(null)
-  const [filtroStagione, setFiltroStagione] = useState('')
-  const [ordinamento, setOrdinamento] = useState('nome')
+  const [rows, setRows] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({
+    nome: "",
+    prezzo: "",
+    stagione: "Estiva",
+  });
 
+  // 🔁 Carica tutti gli articoli
   async function load() {
-    let query = supabase.from('articoli').select('*')
-    if (filtroStagione) query = query.eq('stagione', filtroStagione)
-    query = query.order(ordinamento, { ascending: true })
-    const { data, error } = await query
-    if (error) console.error(error)
-    else setArticoli(data || [])
+    const { data, error } = await supabase
+      .from("articoli")
+      .select("*")
+      .order("id", { ascending: true });
+    if (error) {
+      console.error(error);
+      return;
+    }
+    setRows(data || []);
   }
 
   useEffect(() => {
-    load()
-  }, [filtroStagione, ordinamento])
+    load();
+  }, []);
 
-  async function salvaArticolo() {
-    if (!form.nome) return alert('Inserisci il nome del capo')
-    if (editing) {
-      await supabase.from('articoli').update(form).eq('id', editing)
-      setEditing(null)
+  // 🔥 Realtime per aggiornamento automatico
+  useEffect(() => {
+    const ch = supabase
+      .channel("public:articoli")
+      .on("postgres_changes", { event: "*", schema: "public" }, load)
+      .subscribe();
+
+    return () => supabase.removeChannel(ch);
+  }, []);
+
+  // ➕ Aggiungi o modifica articolo
+  async function onSubmit(e) {
+    e.preventDefault();
+
+    const payload = {
+      nome: form.nome?.trim() || "",
+      prezzo: form.prezzo || "",
+      stagione: form.stagione,
+    };
+
+    if (editingId) {
+      const { error } = await supabase.from("articoli").update(payload).eq("id", editingId);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      setEditingId(null);
     } else {
-      await supabase.from('articoli').insert([form])
+      const { error } = await supabase.from("articoli").insert([payload]);
+      if (error) {
+        alert(error.message);
+        return;
+      }
     }
-    setForm({ nome: '', prezzo: '', stagione: 'Estiva' })
-    load()
+
+    setForm({ nome: "", prezzo: "", stagione: "Estiva" });
+    await load();
   }
 
-  async function elimina(id) {
-    if (!window.confirm('Sei sicuro di voler eliminare questo articolo?')) return
-    await supabase.from('articoli').delete().eq('id', id)
-    load()
-  }
-
-  async function modifica(articolo) {
-    setEditing(articolo.id)
+  // ✏️ Modifica
+  function editRow(r) {
+    setEditingId(r.id);
     setForm({
-      nome: articolo.nome,
-      prezzo: articolo.prezzo || '',
-      stagione: articolo.stagione || 'Estiva',
-    })
+      nome: r.nome || "",
+      prezzo: r.prezzo || "",
+      stagione: r.stagione || "Estiva",
+    });
+  }
+
+  // ❌ Elimina
+  async function removeRow(id) {
+    if (!confirm("Eliminare questo articolo?")) return;
+    const { error } = await supabase.from("articoli").delete().eq("id", id);
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    await load();
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* CARD GESTIONE ARTICOLI */}
-      <div className="bg-white shadow-sm rounded-xl p-5 border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4 text-gray-800">Gestione articoli</h3>
+    <div className="container">
+      <div className="card">
+        <h3>Gestione articoli</h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+        <form
+          onSubmit={onSubmit}
+          style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}
+        >
           <input
-            type="text"
+            required
             placeholder="Nome articolo"
-            className="border rounded-lg px-3 py-2"
             value={form.nome}
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
           />
           <input
-            type="number"
             placeholder="Prezzo"
-            className="border rounded-lg px-3 py-2"
+            type="number"
             value={form.prezzo}
             onChange={(e) => setForm({ ...form, prezzo: e.target.value })}
           />
           <select
             value={form.stagione}
             onChange={(e) => setForm({ ...form, stagione: e.target.value })}
-            className="border rounded-lg px-3 py-2"
           >
             <option value="Estiva">Estiva</option>
             <option value="Invernale">Invernale</option>
           </select>
 
-          <button
-            onClick={salvaArticolo}
-            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm"
-          >
-            <Plus size={18} />
-            {editing ? 'Aggiorna' : 'Aggiungi'}
-          </button>
-
-          {editing && (
-            <button
-              onClick={() => {
-                setEditing(null)
-                setForm({ nome: '', prezzo: '', stagione: 'Estiva' })
-              }}
-              className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg shadow-sm"
-            >
-              Annulla
+          <div style={{ gridColumn: "1/-1", textAlign: "right" }}>
+            <button className="btn">
+              {editingId ? "💾 Salva modifiche" : "➕ Aggiungi"}
             </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2">
-            <label className="font-semibold text-sm">Filtra per stagione:</label>
-            <select
-              value={filtroStagione}
-              onChange={(e) => setFiltroStagione(e.target.value)}
-              className="border rounded-lg px-3 py-1.5"
-            >
-              <option value="">Tutte</option>
-              <option value="Estiva">Estiva</option>
-              <option value="Invernale">Invernale</option>
-            </select>
           </div>
-
-          <div className="flex items-center gap-2">
-            <label className="font-semibold text-sm">Ordina per:</label>
-            <select
-              value={ordinamento}
-              onChange={(e) => setOrdinamento(e.target.value)}
-              className="border rounded-lg px-3 py-1.5"
-            >
-              <option value="nome">Nome</option>
-              <option value="stagione">Stagione</option>
-              <option value="prezzo">Prezzo</option>
-              <option value="id">ID</option>
-            </select>
-          </div>
-        </div>
+        </form>
       </div>
 
-      {/* CARD ELENCO ARTICOLI */}
-      <div className="bg-white shadow-sm rounded-xl p-5 border border-gray-200">
-        <h3 className="text-lg font-semibold mb-4 text-gray-800">Elenco articoli</h3>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm border text-gray-800">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border px-3 py-2">ID</th>
-                <th className="border px-3 py-2 text-left">Nome</th>
-                <th className="border px-3 py-2">Prezzo</th>
-                <th className="border px-3 py-2">Stagione</th>
-                <th className="border px-3 py-2 text-center">Azioni</th>
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>Elenco articoli</h3>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Prezzo</th>
+              <th>Stagione</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td>{r.id}</td>
+                <td>{r.nome}</td>
+                <td>{r.prezzo ? `${r.prezzo} €` : "-"}</td>
+                <td>{r.stagione}</td>
+                <td>
+                  <button className="btn secondary" onClick={() => editRow(r)}>
+                    ✏️ Modifica
+                  </button>{" "}
+                  <button className="btn secondary" onClick={() => removeRow(r.id)}>
+                    ❌ Elimina
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {articoli.map((a) => (
-                <tr key={a.id}>
-                  <td className="border px-3 py-2 text-center">{a.id}</td>
-                  <td className="border px-3 py-2">{a.nome}</td>
-                  <td className="border px-3 py-2 text-right">
-                    {a.prezzo ? `${a.prezzo} €` : '-'}
-                  </td>
-                  <td className="border px-3 py-2 text-center">{a.stagione}</td>
-                  <td className="border px-3 py-2 text-center">
-                    <div className="flex justify-center gap-2">
-                      <button
-                        onClick={() => modifica(a)}
-                        className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-md text-sm font-medium"
-                      >
-                        <Pencil size={15} />
-                        Modifica
-                      </button>
-                      <button
-                        onClick={() => elimina(a.id)}
-                        className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm font-medium"
-                      >
-                        <X size={15} />
-                        Elimina
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {articoli.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="text-center text-gray-500 py-4">
-                    Nessun articolo disponibile
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {articoli.length > 0 && (
-          <div className="mt-4 text-sm text-gray-600">
-            Totale articoli: <strong>{articoli.length}</strong> (
-            {articoli.filter((a) => a.stagione === 'Estiva').length} estivi /{' '}
-            {articoli.filter((a) => a.stagione === 'Invernale').length} invernali)
-          </div>
-        )}
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan="5" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                  Nessun articolo presente
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
-  )
+  );
 }
