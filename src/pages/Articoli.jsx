@@ -209,7 +209,15 @@ function Articoli() {
             <select
               required
               value={form.gruppo}
-              onChange={(e) => setForm({ ...form, gruppo: e.target.value })}
+              onChange={(e) => {
+                const gruppo = e.target.value;
+                const gruppoBase = rows.find((r) => r.gruppo === gruppo && !r.taglia);
+                setForm({
+                  ...form,
+                  gruppo,
+                  nome: gruppoBase ? gruppoBase.nome : form.nome,
+                });
+              }}
               style={{ flex: 1 }}
             >
               <option value="">Seleziona gruppo</option>
@@ -357,21 +365,24 @@ function Articoli() {
           </thead>
           <tbody>
             {Object.entries(grouped).map(([key, items]) => {
+              const principale = items.find((x) => !x.taglia) || items[0];
+              const varianti = items.filter((x) => x.taglia);
               const tot = items.reduce((s, x) => s + (x.quantita || 0), 0);
-              const stagione = items[0]?.stagione || "-";
-              const foto = items[0]?.foto_url || "";
+              const stagione = principale.stagione || "-";
+              const foto = principale.foto_url || "";
+
               return (
                 <>
                   <tr key={key}>
-                    <td>{key}</td>
-                    <td>{items[0].nome}</td>
+                    <td>{principale.gruppo || key}</td>
+                    <td>{principale.nome}</td>
                     <td>{tot}</td>
                     <td>{stagione}</td>
                     <td>
                       {foto ? (
                         <img
                           src={foto}
-                          alt={items[0].nome}
+                          alt={principale.nome}
                           onClick={() => setZoomImg(foto)}
                           style={{
                             width: 50,
@@ -395,11 +406,13 @@ function Articoli() {
                       </button>
                     </td>
                   </tr>
+
+                  {/* VARIANTI */}
                   {expandedGroups.has(key) &&
-                    items.map((r) => (
+                    varianti.map((r) => (
                       <tr key={r.id} style={{ background: "#fafafa" }}>
                         <td colSpan="2">
-                          {r.taglia ? `Taglia ${r.taglia}` : "-"} — Cod. {r.codice_fornitore}
+                          Taglia {r.taglia || "-"} — Cod. {r.codice_fornitore}
                         </td>
                         <td>{r.quantita}</td>
                         <td>{r.stagione}</td>
