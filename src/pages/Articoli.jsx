@@ -50,29 +50,26 @@ export default function Articoli() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* --- CARD GESTIONE ARTICOLI --- */}
-      <div className="bg-white border rounded-xl p-5 shadow-sm">
+    <div className="space-y-6 p-6">
+      {/* CARD GESTIONE ARTICOLI */}
+      <div className="bg-white shadow-sm rounded-xl p-5 border border-gray-200">
         <h3 className="text-lg font-semibold mb-4 text-gray-800">Gestione articoli</h3>
 
-        {/* --- FORM --- */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
           <input
             type="text"
             placeholder="Nome articolo"
-            className="border rounded-lg px-3 py-2 flex-1 min-w-[150px]"
+            className="border rounded-lg px-3 py-2"
             value={form.nome}
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
           />
-
           <input
             type="number"
             placeholder="Prezzo"
-            className="border rounded-lg px-3 py-2 w-40"
+            className="border rounded-lg px-3 py-2"
             value={form.prezzo}
             onChange={(e) => setForm({ ...form, prezzo: e.target.value })}
           />
-
           <select
             value={form.stagione}
             onChange={(e) => setForm({ ...form, stagione: e.target.value })}
@@ -84,9 +81,9 @@ export default function Articoli() {
 
           <button
             onClick={salvaArticolo}
-            className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm"
+            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm"
           >
-            <Plus size={16} />
+            <Plus size={18} />
             {editing ? 'Aggiorna' : 'Aggiungi'}
           </button>
 
@@ -103,7 +100,6 @@ export default function Articoli() {
           )}
         </div>
 
-        {/* --- FILTRI --- */}
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2">
             <label className="font-semibold text-sm">Filtra per stagione:</label>
@@ -134,12 +130,12 @@ export default function Articoli() {
         </div>
       </div>
 
-      {/* --- CARD ELENCO ARTICOLI --- */}
-      <div className="bg-white border rounded-xl p-5 shadow-sm">
+      {/* CARD ELENCO ARTICOLI */}
+      <div className="bg-white shadow-sm rounded-xl p-5 border border-gray-200">
         <h3 className="text-lg font-semibold mb-4 text-gray-800">Elenco articoli</h3>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full border text-sm text-gray-800">
+          <table className="min-w-full text-sm border text-gray-800">
             <thead className="bg-gray-100">
               <tr>
                 <th className="border px-3 py-2">ID</th>
@@ -162,7 +158,7 @@ export default function Articoli() {
                     <div className="flex justify-center gap-2">
                       <button
                         onClick={() => modifica(a)}
-                        className="flex items-center gap-1 bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded-md text-sm font-medium"
+                        className="flex items-center gap-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-md text-sm font-medium"
                       >
                         <Pencil size={15} />
                         Modifica
