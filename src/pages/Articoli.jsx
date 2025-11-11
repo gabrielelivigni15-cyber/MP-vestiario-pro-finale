@@ -6,6 +6,7 @@ export default function Articoli() {
   const [filtered, setFiltered] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [zoomImg, setZoomImg] = useState(null);
+
   const [form, setForm] = useState({
     nome: "",
     codice_fornitore: "",
@@ -14,6 +15,7 @@ export default function Articoli() {
     prezzo_unitario: "",
     quantita: "",
     stagione: "Estiva",
+    tipo: "T-shirt/Polo",
     foto_url: "",
   });
 
@@ -84,6 +86,7 @@ export default function Articoli() {
       prezzo_unitario: parseFloat(form.prezzo_unitario) || 0,
       quantita: parseInt(form.quantita) || 0,
       stagione: form.stagione,
+      tipo: form.tipo || "T-shirt/Polo",
       foto_url: form.foto_url?.trim() || "",
     };
 
@@ -104,6 +107,7 @@ export default function Articoli() {
       prezzo_unitario: "",
       quantita: "",
       stagione: "Estiva",
+      tipo: "T-shirt/Polo",
       foto_url: "",
     });
     await load();
@@ -120,6 +124,7 @@ export default function Articoli() {
       prezzo_unitario: r.prezzo_unitario || "",
       quantita: r.quantita || "",
       stagione: r.stagione || "Estiva",
+      tipo: r.tipo || "T-shirt/Polo",
       foto_url: r.foto_url || "",
     });
   }
@@ -183,6 +188,15 @@ export default function Articoli() {
             <option value="Estiva">Estiva</option>
             <option value="Invernale">Invernale</option>
           </select>
+          <select
+            value={form.tipo}
+            onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+            required
+          >
+            <option value="T-shirt/Polo">T-shirt/Polo</option>
+            <option value="Pantaloni">Pantaloni</option>
+            <option value="Gilet">Gilet</option>
+          </select>
           <input
             placeholder="Foto URL"
             value={form.foto_url}
@@ -201,7 +215,6 @@ export default function Articoli() {
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Elenco articoli</h3>
 
-        {/* FILTRI MULTIPLI */}
         <div
           style={{
             display: "grid",
@@ -240,6 +253,7 @@ export default function Articoli() {
             <tr>
               <th>ID</th>
               <th>Nome</th>
+              <th>Tipo</th>
               <th>Cod. Fornitore</th>
               <th>Fornitore</th>
               <th>Taglia</th>
@@ -255,10 +269,15 @@ export default function Articoli() {
               <tr key={r.id}>
                 <td>{r.id}</td>
                 <td>{r.nome}</td>
+                <td>{r.tipo}</td>
                 <td>{r.codice_fornitore}</td>
                 <td>{r.fornitore}</td>
                 <td>{r.taglia}</td>
-                <td>{r.prezzo_unitario ? `${parseFloat(r.prezzo_unitario).toFixed(2)} €` : "-"}</td>
+                <td>
+                  {r.prezzo_unitario
+                    ? `${parseFloat(r.prezzo_unitario).toFixed(2)} €`
+                    : "-"}
+                </td>
                 <td>{r.quantita ?? 0}</td>
                 <td>{r.stagione}</td>
                 <td>
@@ -276,8 +295,12 @@ export default function Articoli() {
                         cursor: "zoom-in",
                         transition: "transform 0.2s",
                       }}
-                      onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.08)")}
-                      onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1.0)")}
+                      onMouseOver={(e) =>
+                        (e.currentTarget.style.transform = "scale(1.08)")
+                      }
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.transform = "scale(1.0)")
+                      }
                     />
                   ) : (
                     "-"
@@ -295,7 +318,7 @@ export default function Articoli() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan="10" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                <td colSpan="11" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
                   Nessun articolo trovato
                 </td>
               </tr>
