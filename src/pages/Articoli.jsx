@@ -3,8 +3,9 @@ import { supabase } from "../lib/supabase.js";
 
 export default function Articoli() {
   const [rows, setRows] = useState([]);
+  const [filtered, setFiltered] = useState([]); // 👈 lista filtrata
   const [editingId, setEditingId] = useState(null);
-  const [zoomImg, setZoomImg] = useState(null); // 🔍 immagine ingrandita
+  const [zoomImg, setZoomImg] = useState(null);
   const [form, setForm] = useState({
     nome: "",
     codice_fornitore: "",
@@ -14,6 +15,13 @@ export default function Articoli() {
     quantita: "",
     stagione: "Estiva",
     foto_url: "",
+  });
+
+  const [filters, setFilters] = useState({
+    id: "",
+    nome: "",
+    stagione: "",
+    fornitore: "",
   });
 
   // 🔁 Carica articoli
@@ -27,6 +35,7 @@ export default function Articoli() {
       return;
     }
     setRows(data || []);
+    setFiltered(data || []);
   }
 
   useEffect(() => {
@@ -41,6 +50,24 @@ export default function Articoli() {
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, []);
+
+  // 🔎 Filtro istantaneo
+  useEffect(() => {
+    let res = [...rows];
+    if (filters.id)
+      res = res.filter((r) => r.id.toString().includes(filters.id.trim()));
+    if (filters.nome)
+      res = res.filter((r) =>
+        r.nome?.toLowerCase().includes(filters.nome.toLowerCase())
+      );
+    if (filters.fornitore)
+      res = res.filter((r) =>
+        r.fornitore?.toLowerCase().includes(filters.fornitore.toLowerCase())
+      );
+    if (filters.stagione)
+      res = res.filter((r) => r.stagione === filters.stagione);
+    setFiltered(res);
+  }, [filters, rows]);
 
   // ➕ Aggiungi o modifica
   async function onSubmit(e) {
@@ -169,6 +196,41 @@ export default function Articoli() {
       {/* --- CARD ELENCO ARTICOLI --- */}
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Elenco articoli</h3>
+
+        {/* FILTRI MULTIPLI */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4,1fr)",
+            gap: 8,
+            marginBottom: 12,
+          }}
+        >
+          <input
+            placeholder="Filtra per ID"
+            value={filters.id}
+            onChange={(e) => setFilters({ ...filters, id: e.target.value })}
+          />
+          <input
+            placeholder="Filtra per nome"
+            value={filters.nome}
+            onChange={(e) => setFilters({ ...filters, nome: e.target.value })}
+          />
+          <input
+            placeholder="Filtra per fornitore"
+            value={filters.fornitore}
+            onChange={(e) => setFilters({ ...filters, fornitore: e.target.value })}
+          />
+          <select
+            value={filters.stagione}
+            onChange={(e) => setFilters({ ...filters, stagione: e.target.value })}
+          >
+            <option value="">Tutte le stagioni</option>
+            <option value="Estiva">Estiva</option>
+            <option value="Invernale">Invernale</option>
+          </select>
+        </div>
+
         <table className="table">
           <thead>
             <tr>
@@ -185,7 +247,7 @@ export default function Articoli() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {filtered.map((r) => (
               <tr key={r.id}>
                 <td>{r.id}</td>
                 <td>{r.nome}</td>
@@ -227,10 +289,10 @@ export default function Articoli() {
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {filtered.length === 0 && (
               <tr>
                 <td colSpan="10" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
-                  Nessun articolo presente
+                  Nessun articolo trovato
                 </td>
               </tr>
             )}
