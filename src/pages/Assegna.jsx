@@ -53,7 +53,7 @@ export default function Assegna() {
     const payload = {
       id_persona: parseInt(form.id_persona),
       id_articolo: parseInt(form.id_articolo),
-      prezzo_unitario: articolo.prezzo_unitario || 0, // ✅ nome colonna corretto
+      prezzo_unitario: articolo.prezzo_unitario || 0,
       quantita: parseInt(form.quantita),
       data_consegna: new Date().toISOString().split("T")[0],
     };
@@ -71,6 +71,38 @@ export default function Assegna() {
     // 🔹 Reset form e ricarica
     setForm({ id_persona: "", id_articolo: "", quantita: 1, taglia: "" });
     await load();
+  }
+
+  // ❌ Annulla assegnazione
+  async function annullaAssegnazione(assegnazione) {
+    if (
+      !confirm(
+        `Vuoi annullare l’assegnazione #${assegnazione.id}? Questa operazione riporterà la quantità in magazzino.`
+      )
+    )
+      return;
+
+    const articolo = articoli.find((a) => a.id === assegnazione.id_articolo);
+    if (!articolo)
+      return alert("Articolo collegato non trovato, impossibile aggiornare quantità.");
+
+    // 🔹 Riaggiungi quantità all’articolo
+    const nuovaQuantita = articolo.quantita + assegnazione.quantita;
+    const { error: updateError } = await supabase
+      .from("articoli")
+      .update({ quantita: nuovaQuantita })
+      .eq("id", articolo.id);
+    if (updateError) return alert(updateError.message);
+
+    // 🔹 Elimina assegnazione
+    const { error: deleteError } = await supabase
+      .from("assegnazioni")
+      .delete()
+      .eq("id", assegnazione.id);
+    if (deleteError) return alert(deleteError.message);
+
+    await load();
+    alert("Assegnazione annullata con successo ✅");
   }
 
   return (
@@ -169,6 +201,7 @@ export default function Assegna() {
               <th>Quantità</th>
               <th>Prezzo Unitario</th>
               <th>Totale</th>
+              <th>Azioni</th>
             </tr>
           </thead>
           <tbody>
@@ -195,12 +228,20 @@ export default function Assegna() {
                       ? `${(parseFloat(r.prezzo_unitario) * r.quantita).toFixed(2)} €`
                       : "-"}
                   </td>
+                  <td>
+                    <button
+                      className="btn secondary"
+                      onClick={() => annullaAssegnazione(r)}
+                    >
+                      ❌ Annulla
+                    </button>
+                  </td>
                 </tr>
               );
             })}
             {storico.length === 0 && (
               <tr>
-                <td colSpan="10" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                <td colSpan="11" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
                   Nessuna assegnazione registrata
                 </td>
               </tr>
