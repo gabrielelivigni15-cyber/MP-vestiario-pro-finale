@@ -6,9 +6,11 @@ export default function Articoli() {
   const [filtered, setFiltered] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [zoomImg, setZoomImg] = useState(null);
+  const [expandedGroups, setExpandedGroups] = useState(new Set());
 
   const [form, setForm] = useState({
     nome: "",
+    gruppo: "",
     codice_fornitore: "",
     fornitore: "",
     taglia: "",
@@ -20,8 +22,8 @@ export default function Articoli() {
   });
 
   const [filters, setFilters] = useState({
-    id: "",
     nome: "",
+    gruppo: "",
     stagione: "",
     fornitore: "",
   });
@@ -31,11 +33,13 @@ export default function Articoli() {
     const { data, error } = await supabase
       .from("articoli")
       .select("*")
-      .order("id", { ascending: true });
+      .order("nome", { ascending: true });
+
     if (error) {
       console.error(error);
       return;
     }
+
     setRows(data || []);
     setFiltered(data || []);
   }
@@ -44,23 +48,16 @@ export default function Articoli() {
     load();
   }, []);
 
-  // 🔥 Realtime aggiornamento automatico
-  useEffect(() => {
-    const ch = supabase
-      .channel("public:articoli")
-      .on("postgres_changes", { event: "*", schema: "public" }, load)
-      .subscribe();
-    return () => supabase.removeChannel(ch);
-  }, []);
-
-  // 🔎 Filtro istantaneo
+  // 🔎 Filtri dinamici
   useEffect(() => {
     let res = [...rows];
-    if (filters.id)
-      res = res.filter((r) => r.id.toString().includes(filters.id.trim()));
     if (filters.nome)
       res = res.filter((r) =>
         r.nome?.toLowerCase().includes(filters.nome.toLowerCase())
+      );
+    if (filters.gruppo)
+      res = res.filter((r) =>
+        r.gruppo?.toLowerCase().includes(filters.gruppo.toLowerCase())
       );
     if (filters.fornitore)
       res = res.filter((r) =>
@@ -75,23 +72,27 @@ export default function Articoli() {
     setFiltered(res);
   }, [filters, rows]);
 
-  // ➕ Aggiungi o modifica
+  // ➕ Aggiungi / modifica articolo
   async function onSubmit(e) {
     e.preventDefault();
     const payload = {
       nome: form.nome?.trim() || "",
+      gruppo: form.gruppo?.trim() || "",
       codice_fornitore: form.codice_fornitore?.trim() || "",
       fornitore: form.fornitore?.trim() || "",
       taglia: form.taglia?.trim() || "",
       prezzo_unitario: parseFloat(form.prezzo_unitario) || 0,
       quantita: parseInt(form.quantita) || 0,
       stagione: form.stagione,
-      tipo: form.tipo || "T-shirt/Polo",
+      tipo: form.tipo,
       foto_url: form.foto_url?.trim() || "",
     };
 
     if (editingId) {
-      const { error } = await supabase.from("articoli").update(payload).eq("id", editingId);
+      const { error } = await supabase
+        .from("articoli")
+        .update(payload)
+        .eq("id", editingId);
       if (error) return alert(error.message);
       setEditingId(null);
     } else {
@@ -101,6 +102,7 @@ export default function Articoli() {
 
     setForm({
       nome: "",
+      gruppo: "",
       codice_fornitore: "",
       fornitore: "",
       taglia: "",
@@ -118,6 +120,7 @@ export default function Articoli() {
     setEditingId(r.id);
     setForm({
       nome: r.nome || "",
+      gruppo: r.gruppo || "",
       codice_fornitore: r.codice_fornitore || "",
       fornitore: r.fornitore || "",
       taglia: r.taglia || "",
@@ -137,11 +140,25 @@ export default function Articoli() {
     await load();
   }
 
+  // 🔽 Raggruppamento per gruppo
+  const grouped = filtered.reduce((acc, item) => {
+    const key = item.gruppo || item.nome;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  const toggleGroup = (key) => {
+    const newSet = new Set(expandedGroups);
+    newSet.has(key) ? newSet.delete(key) : newSet.add(key);
+    setExpandedGroups(newSet);
+  };
+
   return (
     <div className="container">
-      {/* --- CARD GESTIONE ARTICOLI --- */}
+      {/* --- FORM ARTICOLI --- */}
       <div className="card">
-        <h3>Gestione articoli</h3>
+        <h3>Gestione Articoli (Gruppi & Varianti)</h3>
 
         <form
           onSubmit={onSubmit}
@@ -152,6 +169,11 @@ export default function Articoli() {
             placeholder="Nome articolo"
             value={form.nome}
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
+          />
+          <input
+            placeholder="Gruppo (es. FELPA-MP)"
+            value={form.gruppo}
+            onChange={(e) => setForm({ ...form, gruppo: e.target.value })}
           />
           <input
             placeholder="Codice fornitore"
@@ -173,7 +195,9 @@ export default function Articoli() {
             type="number"
             step="0.01"
             value={form.prezzo_unitario}
-            onChange={(e) => setForm({ ...form, prezzo_unitario: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, prezzo_unitario: e.target.value })
+            }
           />
           <input
             placeholder="Quantità"
@@ -191,7 +215,6 @@ export default function Articoli() {
           <select
             value={form.tipo}
             onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-            required
           >
             <option value="T-shirt/Polo">T-shirt/Polo</option>
             <option value="Pantaloni">Pantaloni</option>
@@ -211,9 +234,9 @@ export default function Articoli() {
         </form>
       </div>
 
-      {/* --- CARD ELENCO ARTICOLI --- */}
+      {/* --- FILTRI E TABELLA --- */}
       <div className="card" style={{ marginTop: 16 }}>
-        <h3>Elenco articoli</h3>
+        <h3>Elenco Articoli Raggruppati</h3>
 
         <div
           style={{
@@ -224,19 +247,21 @@ export default function Articoli() {
           }}
         >
           <input
-            placeholder="Filtra per ID"
-            value={filters.id}
-            onChange={(e) => setFilters({ ...filters, id: e.target.value })}
-          />
-          <input
             placeholder="Filtra per nome"
             value={filters.nome}
             onChange={(e) => setFilters({ ...filters, nome: e.target.value })}
           />
           <input
+            placeholder="Filtra per gruppo"
+            value={filters.gruppo}
+            onChange={(e) => setFilters({ ...filters, gruppo: e.target.value })}
+          />
+          <input
             placeholder="Filtra per fornitore"
             value={filters.fornitore}
-            onChange={(e) => setFilters({ ...filters, fornitore: e.target.value })}
+            onChange={(e) =>
+              setFilters({ ...filters, fornitore: e.target.value })
+            }
           />
           <select
             value={filters.stagione}
@@ -251,74 +276,64 @@ export default function Articoli() {
         <table className="table">
           <thead>
             <tr>
-              <th>ID</th>
+              <th>Gruppo</th>
               <th>Nome</th>
-              <th>Tipo</th>
-              <th>Cod. Fornitore</th>
-              <th>Fornitore</th>
-              <th>Taglia</th>
-              <th>Prezzo Unitario</th>
-              <th>Quantità</th>
+              <th>Totale quantità</th>
               <th>Stagione</th>
-              <th>Foto</th>
               <th>Azioni</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id}>
-                <td>{r.id}</td>
-                <td>{r.nome}</td>
-                <td>{r.tipo}</td>
-                <td>{r.codice_fornitore}</td>
-                <td>{r.fornitore}</td>
-                <td>{r.taglia}</td>
-                <td>
-                  {r.prezzo_unitario
-                    ? `${parseFloat(r.prezzo_unitario).toFixed(2)} €`
-                    : "-"}
-                </td>
-                <td>{r.quantita ?? 0}</td>
-                <td>{r.stagione}</td>
-                <td>
-                  {r.foto_url ? (
-                    <img
-                      src={r.foto_url}
-                      alt={r.nome}
-                      onClick={() => setZoomImg(r.foto_url)}
-                      style={{
-                        width: 50,
-                        height: 50,
-                        objectFit: "cover",
-                        borderRadius: 6,
-                        border: "1px solid #ddd",
-                        cursor: "zoom-in",
-                        transition: "transform 0.2s",
-                      }}
-                      onMouseOver={(e) =>
-                        (e.currentTarget.style.transform = "scale(1.08)")
-                      }
-                      onMouseOut={(e) =>
-                        (e.currentTarget.style.transform = "scale(1.0)")
-                      }
-                    />
-                  ) : (
-                    "-"
-                  )}
-                </td>
-                <td>
-                  <button className="btn secondary" onClick={() => editRow(r)}>
-                    ✏️ Modifica
-                  </button>{" "}
-                  <button className="btn secondary" onClick={() => removeRow(r.id)}>
-                    ❌ Elimina
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
+            {Object.entries(grouped).map(([key, items]) => {
+              const tot = items.reduce((s, x) => s + (x.quantita || 0), 0);
+              const stagione = items[0]?.stagione || "-";
+              return (
+                <>
+                  <tr key={key}>
+                    <td>{key}</td>
+                    <td>{items[0].nome}</td>
+                    <td>{tot}</td>
+                    <td>{stagione}</td>
+                    <td>
+                      <button
+                        className="btn secondary"
+                        onClick={() => toggleGroup(key)}
+                      >
+                        {expandedGroups.has(key) ? "🔼 Nascondi" : "🔽 Espandi"}
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedGroups.has(key) &&
+                    items.map((r) => (
+                      <tr key={r.id} style={{ background: "#fafafa" }}>
+                        <td colSpan="2">
+                          {r.taglia ? `Taglia ${r.taglia}` : "-"} — Cod.{" "}
+                          {r.codice_fornitore}
+                        </td>
+                        <td>{r.quantita}</td>
+                        <td>{r.stagione}</td>
+                        <td>
+                          <button
+                            className="btn secondary"
+                            onClick={() => editRow(r)}
+                          >
+                            ✏️ Modifica
+                          </button>{" "}
+                          <button
+                            className="btn secondary"
+                            onClick={() => removeRow(r.id)}
+                          >
+                            ❌ Elimina
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </>
+              );
+            })}
+            {Object.keys(grouped).length === 0 && (
               <tr>
-                <td colSpan="11" style={{ textAlign: "center", padding: 12, color: "#6b7280" }}>
+                <td colSpan="5" style={{ textAlign: "center", color: "#6b7280" }}>
                   Nessun articolo trovato
                 </td>
               </tr>
@@ -326,38 +341,6 @@ export default function Articoli() {
           </tbody>
         </table>
       </div>
-
-      {/* --- MODALE ZOOM FOTO --- */}
-      {zoomImg && (
-        <div
-          onClick={() => setZoomImg(null)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            cursor: "zoom-out",
-          }}
-        >
-          <img
-            src={zoomImg}
-            alt="Zoom"
-            style={{
-              maxWidth: "90%",
-              maxHeight: "90%",
-              borderRadius: 10,
-              boxShadow: "0 0 20px rgba(0,0,0,0.5)",
-              border: "2px solid white",
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 }
