@@ -53,7 +53,7 @@ export default function Assegna() {
     const payload = {
       id_persona: parseInt(form.id_persona),
       id_articolo: parseInt(form.id_articolo),
-      prezzo_unitari: articolo.prezzo_unitario || 0,
+      prezzo_unitario: articolo.prezzo_unitario || 0, // ✅ nome colonna corretto
       quantita: parseInt(form.quantita),
       data_consegna: new Date().toISOString().split("T")[0],
     };
@@ -186,13 +186,13 @@ export default function Assegna() {
                   <td>{articolo?.stagione || "-"}</td>
                   <td>{r.quantita}</td>
                   <td>
-                    {articolo?.prezzo_unitario
-                      ? `${parseFloat(articolo.prezzo_unitario).toFixed(2)} €`
+                    {r.prezzo_unitario
+                      ? `${parseFloat(r.prezzo_unitario).toFixed(2)} €`
                       : "-"}
                   </td>
                   <td>
-                    {articolo?.prezzo_unitario && r.quantita
-                      ? `${(parseFloat(articolo.prezzo_unitario) * r.quantita).toFixed(2)} €`
+                    {r.prezzo_unitario && r.quantita
+                      ? `${(parseFloat(r.prezzo_unitario) * r.quantita).toFixed(2)} €`
                       : "-"}
                   </td>
                 </tr>
