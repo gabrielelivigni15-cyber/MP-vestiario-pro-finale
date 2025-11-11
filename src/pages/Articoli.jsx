@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase.js";
 
 export default function Articoli() {
   const [rows, setRows] = useState([]);
-  const [filtered, setFiltered] = useState([]); // 👈 lista filtrata
+  const [filtered, setFiltered] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [zoomImg, setZoomImg] = useState(null);
   const [form, setForm] = useState({
@@ -11,7 +11,7 @@ export default function Articoli() {
     codice_fornitore: "",
     fornitore: "",
     taglia: "",
-    prezzo: "",
+    prezzo_unitario: "",
     quantita: "",
     stagione: "Estiva",
     foto_url: "",
@@ -65,7 +65,11 @@ export default function Articoli() {
         r.fornitore?.toLowerCase().includes(filters.fornitore.toLowerCase())
       );
     if (filters.stagione)
-      res = res.filter((r) => r.stagione === filters.stagione);
+      res = res.filter(
+        (r) =>
+          r.stagione?.toLowerCase().trim() ===
+          filters.stagione.toLowerCase().trim()
+      );
     setFiltered(res);
   }, [filters, rows]);
 
@@ -77,7 +81,7 @@ export default function Articoli() {
       codice_fornitore: form.codice_fornitore?.trim() || "",
       fornitore: form.fornitore?.trim() || "",
       taglia: form.taglia?.trim() || "",
-      prezzo: parseFloat(form.prezzo) || 0,
+      prezzo_unitario: parseFloat(form.prezzo_unitario) || 0,
       quantita: parseInt(form.quantita) || 0,
       stagione: form.stagione,
       foto_url: form.foto_url?.trim() || "",
@@ -97,7 +101,7 @@ export default function Articoli() {
       codice_fornitore: "",
       fornitore: "",
       taglia: "",
-      prezzo: "",
+      prezzo_unitario: "",
       quantita: "",
       stagione: "Estiva",
       foto_url: "",
@@ -113,7 +117,7 @@ export default function Articoli() {
       codice_fornitore: r.codice_fornitore || "",
       fornitore: r.fornitore || "",
       taglia: r.taglia || "",
-      prezzo: r.prezzo || "",
+      prezzo_unitario: r.prezzo_unitario || "",
       quantita: r.quantita || "",
       stagione: r.stagione || "Estiva",
       foto_url: r.foto_url || "",
@@ -160,11 +164,11 @@ export default function Articoli() {
             onChange={(e) => setForm({ ...form, taglia: e.target.value })}
           />
           <input
-            placeholder="Prezzo (€)"
+            placeholder="Prezzo unitario (€)"
             type="number"
             step="0.01"
-            value={form.prezzo}
-            onChange={(e) => setForm({ ...form, prezzo: e.target.value })}
+            value={form.prezzo_unitario}
+            onChange={(e) => setForm({ ...form, prezzo_unitario: e.target.value })}
           />
           <input
             placeholder="Quantità"
@@ -239,7 +243,7 @@ export default function Articoli() {
               <th>Cod. Fornitore</th>
               <th>Fornitore</th>
               <th>Taglia</th>
-              <th>Prezzo</th>
+              <th>Prezzo Unitario</th>
               <th>Quantità</th>
               <th>Stagione</th>
               <th>Foto</th>
@@ -254,7 +258,7 @@ export default function Articoli() {
                 <td>{r.codice_fornitore}</td>
                 <td>{r.fornitore}</td>
                 <td>{r.taglia}</td>
-                <td>{r.prezzo ? `${parseFloat(r.prezzo).toFixed(2)} €` : "-"}</td>
+                <td>{r.prezzo_unitario ? `${parseFloat(r.prezzo_unitario).toFixed(2)} €` : "-"}</td>
                 <td>{r.quantita ?? 0}</td>
                 <td>{r.stagione}</td>
                 <td>
