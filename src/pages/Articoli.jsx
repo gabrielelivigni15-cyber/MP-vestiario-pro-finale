@@ -5,11 +5,18 @@ export default function Articoli() {
   const [articoli, setArticoli] = useState([])
   const [form, setForm] = useState({ nome: '', prezzo: '', stagione: 'Estiva' })
   const [editing, setEditing] = useState(null)
-  const [filtroStagione, setFiltroStagione] = useState('') // Filtro stagione
+  const [filtroStagione, setFiltroStagione] = useState('')
+  const [ordinamento, setOrdinamento] = useState('nome') // nuovo filtro di ordinamento
 
   async function load() {
-    let query = supabase.from('articoli').select('*').order('nome')
+    let query = supabase.from('articoli').select('*')
+
+    // Applica filtro stagione
     if (filtroStagione) query = query.eq('stagione', filtroStagione)
+
+    // Applica ordinamento selezionato
+    query = query.order(ordinamento, { ascending: true })
+
     const { data, error } = await query
     if (error) console.error(error)
     else setArticoli(data || [])
@@ -17,7 +24,7 @@ export default function Articoli() {
 
   useEffect(() => {
     load()
-  }, [filtroStagione])
+  }, [filtroStagione, ordinamento])
 
   async function salvaArticolo() {
     if (!form.nome) return alert('Inserisci il nome del capo')
@@ -50,18 +57,34 @@ export default function Articoli() {
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Gestione Articoli</h2>
 
-      {/* FILTRO STAGIONE */}
-      <div className="mb-4 flex items-center gap-3">
-        <label className="font-medium text-gray-700">Filtra per stagione:</label>
-        <select
-          value={filtroStagione}
-          onChange={(e) => setFiltroStagione(e.target.value)}
-          className="border rounded-lg p-2 bg-white shadow-sm"
-        >
-          <option value="">Tutte</option>
-          <option value="Estiva">Estiva</option>
-          <option value="Invernale">Invernale</option>
-        </select>
+      {/* FILTRI STAGIONE + ORDINAMENTO */}
+      <div className="mb-4 flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <label className="font-medium text-gray-700">Filtra per stagione:</label>
+          <select
+            value={filtroStagione}
+            onChange={(e) => setFiltroStagione(e.target.value)}
+            className="border rounded-lg p-2 bg-white shadow-sm"
+          >
+            <option value="">Tutte</option>
+            <option value="Estiva">Estiva</option>
+            <option value="Invernale">Invernale</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="font-medium text-gray-700">Ordina per:</label>
+          <select
+            value={ordinamento}
+            onChange={(e) => setOrdinamento(e.target.value)}
+            className="border rounded-lg p-2 bg-white shadow-sm"
+          >
+            <option value="nome">Nome</option>
+            <option value="stagione">Stagione</option>
+            <option value="prezzo">Prezzo</option>
+            <option value="id">ID</option>
+          </select>
+        </div>
       </div>
 
       {/* FORM INSERIMENTO / MODIFICA */}
