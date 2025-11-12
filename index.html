@@ -2,12 +2,26 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="theme-color" content="#1e293b" />
+    <meta
+      name="description"
+      content="MP Vestiario Pro - Gestione vestiario aziendale Medipower"
+    />
+
     <title>MP Vestiario Pro</title>
 
-    <link rel="icon" href="/medipower-logo.png" type="image/png" />
+    <!-- 🔗 Manifest PWA (non usato ora, ma lasciato pronto) -->
+    <link rel="manifest" href="/manifest.json" />
 
-    <!-- Google Font -->
+    <!-- 🖼️ Icone -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-512.png" />
+
+    <!-- 🖋️ Font Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -15,11 +29,18 @@
       rel="stylesheet"
     />
 
-    <!-- Stile globale -->
+    <!-- 🎨 Stile globale -->
     <link rel="stylesheet" href="./src/globals.css" />
   </head>
+
   <body>
+    <!-- 🔰 Radice dell'app React -->
     <div id="root"></div>
+
+    <!-- ⚡ Entrata principale React -->
     <script type="module" src="./src/main.jsx"></script>
+
+    <!-- ❌ RIMOSSO SERVICE WORKER per evitare cache -->
+    <!-- Niente cache, nessun Ctrl + F5, tutto si aggiorna subito -->
   </body>
 </html>
