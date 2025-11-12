@@ -1,146 +1,165 @@
-// src/pages/Articoli.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase.js";
 
 export default function Articoli() {
   const [articoli, setArticoli] = useState([]);
   const [gruppi, setGruppi] = useState([]);
   const [form, setForm] = useState({
-    nome_articolo: "",
-    gruppo: "",
+    nome: "",
     fornitore: "",
     codice_fornitore: "",
-    taglia: "",
-    stagione: "Estiva",
-    tipo: "T-shirt/Polo",
     prezzo_unitario: "",
     quantita: "",
     foto_url: "",
+    stagione: "Estiva",
+    tipo: "T-shirt/Polo",
+    gruppo: "",
+    taglia: "",
   });
 
+  // 🔁 Carica articoli e gruppi
   async function load() {
-    // Carica articoli
-    const { data: a } = await supabase
+    const { data: articoliData } = await supabase
       .from("articoli")
       .select("*")
-      .order("nome_capo", { ascending: true });
-    setArticoli(a || []);
+      .order("id", { ascending: true });
+    setArticoli(articoliData || []);
 
-    // Gruppi derivati dal nome_capo (o "gruppo" se lo hai)
-    const g = Array.from(
-      new Set((a || []).map((x) => x.nome_capo || x.gruppo || x.nome_articolo || ""))
-    ).filter(Boolean);
-    setGruppi(g);
+    const { data: gruppiData } = await supabase
+      .from("articoli")
+      .select("gruppo")
+      .not("gruppo", "is", null)
+      .order("gruppo", { ascending: true });
+    const unici = [...new Set(gruppiData.map((g) => g.gruppo))];
+    setGruppi(unici);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const raggruppati = useMemo(() => {
-    const map = new Map();
-    for (const r of articoli) {
-      const key = r.nome_capo || r.gruppo || r.nome_articolo || "—";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(r);
-    }
-    return Array.from(map.entries()); // [ [gruppo, rows], ... ]
-  }, [articoli]);
-
-  async function addVariante() {
-    if (!form.nome_articolo && !form.gruppo) {
-      alert("Inserisci almeno Nome articolo o seleziona un Gruppo.");
+  // ➕ Aggiungi articolo
+  async function aggiungiVariante() {
+    if (!form.nome || !form.tipo) {
+      alert("Inserisci almeno il nome e il tipo di articolo");
       return;
     }
-    const payload = {
-      nome_capo: form.nome_articolo || form.gruppo,
-      fornitore: form.fornitore || null,
-      codice_fornitore: form.codice_fornitore || null,
-      taglia: form.taglia || null,
-      stagione: form.stagione,
-      tipo: form.tipo,
-      prezzo_unitario: form.prezzo_unitario ? Number(form.prezzo_unitario) : null,
-      quantita: form.quantita ? Number(form.quantita) : 0,
-      foto_url: form.foto_url || null,
-    };
-    const { error } = await supabase.from("articoli").insert([payload]);
+    const { error } = await supabase.from("articoli").insert([form]);
     if (error) return alert(error.message);
     setForm({
-      nome_articolo: "",
-      gruppo: "",
+      nome: "",
       fornitore: "",
       codice_fornitore: "",
-      taglia: "",
-      stagione: "Estiva",
-      tipo: "T-shirt/Polo",
       prezzo_unitario: "",
       quantita: "",
       foto_url: "",
+      stagione: "Estiva",
+      tipo: "T-shirt/Polo",
+      gruppo: "",
+      taglia: "",
     });
     load();
   }
 
+  // ➕ Aggiungi gruppo nuovo
+  async function aggiungiGruppo() {
+    const nomeGruppo = prompt("Inserisci il nome del nuovo gruppo:");
+    if (!nomeGruppo) return;
+    setGruppi([...gruppi, nomeGruppo]);
+    alert(`Gruppo "${nomeGruppo}" aggiunto con successo!`);
+  }
+
   return (
-    <div>
+    <div className="container">
       <div className="card">
         <h3>Gestione Articoli (Gruppi & Varianti)</h3>
 
-        {/* 👇 FORM IN GRIGLIA: niente più sovrapposizioni */}
-        <div className="form-grid">
+        {/* 🔸 SEZIONE GRUPPI */}
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            alignItems: "center",
+            marginBottom: "12px",
+          }}
+        >
+          <label style={{ fontWeight: 600 }}>Gruppi esistenti:</label>
+          <select
+            value={form.gruppo}
+            onChange={(e) => setForm({ ...form, gruppo: e.target.value })}
+            style={{
+              flex: 1,
+              padding: "6px 8px",
+              borderRadius: "6px",
+              border: "1px solid #ccc",
+            }}
+          >
+            <option value="">Seleziona gruppo</option>
+            {gruppi.map((g, i) => (
+              <option key={i} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={aggiungiGruppo}
+            className="btn secondary"
+            style={{
+              backgroundColor: "#b30e0e",
+              color: "white",
+              padding: "6px 10px",
+              borderRadius: "6px",
+              border: "none",
+            }}
+          >
+            ➕ Aggiungi gruppo
+          </button>
+        </div>
+
+        {/* 🔸 FORM ARTICOLI */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "8px",
+          }}
+        >
           <input
             placeholder="Nome articolo"
-            value={form.nome_articolo}
-            onChange={(e) => setForm({ ...form, nome_articolo: e.target.value })}
+            value={form.nome}
+            onChange={(e) => setForm({ ...form, nome: e.target.value })}
           />
-
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <select
-              value={form.gruppo}
-              onChange={(e) => setForm({ ...form, gruppo: e.target.value })}
-              style={{ flex: 1 }}
-            >
-              <option value="">Seleziona gruppo</option>
-              {gruppi.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </select>
-            {/* opzionale: pulsante aggiungi gruppo se usi un modal */}
-            {/* <button className="btn secondary">+</button> */}
-          </div>
-
           <input
             placeholder="Fornitore"
             value={form.fornitore}
             onChange={(e) => setForm({ ...form, fornitore: e.target.value })}
           />
-
           <input
             placeholder="Codice fornitore"
             value={form.codice_fornitore}
-            onChange={(e) => setForm({ ...form, codice_fornitore: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, codice_fornitore: e.target.value })
+            }
           />
-
           <input
-            placeholder="Quantità"
             type="number"
+            placeholder="Prezzo unitario (€)"
+            value={form.prezzo_unitario}
+            onChange={(e) =>
+              setForm({ ...form, prezzo_unitario: e.target.value })
+            }
+          />
+          <input
+            type="number"
+            placeholder="Quantità"
             value={form.quantita}
             onChange={(e) => setForm({ ...form, quantita: e.target.value })}
           />
-
           <input
-            placeholder="Prezzo unitario (€)"
-            type="number"
-            step="0.01"
-            value={form.prezzo_unitario}
-            onChange={(e) => setForm({ ...form, prezzo_unitario: e.target.value })}
+            placeholder="Taglia"
+            value={form.taglia}
+            onChange={(e) => setForm({ ...form, taglia: e.target.value })}
           />
-
-          <select
-            value={form.stagione}
-            onChange={(e) => setForm({ ...form, stagione: e.target.value })}
-          >
-            <option>Estiva</option>
-            <option>Invernale</option>
-          </select>
-
           <select
             value={form.tipo}
             onChange={(e) => setForm({ ...form, tipo: e.target.value })}
@@ -149,13 +168,13 @@ export default function Articoli() {
             <option>Pantaloni</option>
             <option>Gilet</option>
           </select>
-
-          <input
-            placeholder="Taglia"
-            value={form.taglia}
-            onChange={(e) => setForm({ ...form, taglia: e.target.value })}
-          />
-
+          <select
+            value={form.stagione}
+            onChange={(e) => setForm({ ...form, stagione: e.target.value })}
+          >
+            <option>Estiva</option>
+            <option>Invernale</option>
+          </select>
           <input
             placeholder="Foto URL"
             value={form.foto_url}
@@ -163,12 +182,25 @@ export default function Articoli() {
           />
         </div>
 
-        <div style={{ marginTop: 14, textAlign: "right" }}>
-          <button className="btn" onClick={addVariante}>➕ Aggiungi variante</button>
+        <div style={{ textAlign: "right", marginTop: "12px" }}>
+          <button
+            className="btn"
+            onClick={aggiungiVariante}
+            style={{
+              backgroundColor: "#b30e0e",
+              color: "white",
+              padding: "8px 14px",
+              borderRadius: "6px",
+              border: "none",
+            }}
+          >
+            ➕ Aggiungi variante
+          </button>
         </div>
       </div>
 
-      <div className="card">
+      {/* 🔸 ELENCO ARTICOLI */}
+      <div className="card" style={{ marginTop: 16 }}>
         <h3>Elenco Articoli Raggruppati</h3>
         <table className="table">
           <thead>
@@ -181,23 +213,30 @@ export default function Articoli() {
             </tr>
           </thead>
           <tbody>
-            {raggruppati.map(([group, rows]) => {
-              const totale = rows.reduce((sum, r) => sum + (r.quantita || 0), 0);
-              const stagione = rows[0]?.stagione || "-";
-              const foto = rows[0]?.foto_url || null;
-              return (
-                <tr key={group}>
-                  <td>{group}</td>
-                  <td>{rows[0]?.nome_capo || rows[0]?.nome_articolo || "-"}</td>
-                  <td>{totale}</td>
-                  <td>{stagione}</td>
-                  <td>{foto ? <img src={foto} alt="" style={{ height: 40 }} /> : "-"}</td>
-                </tr>
-              );
-            })}
-            {raggruppati.length === 0 && (
-              <tr><td colSpan="5" className="muted">Nessun articolo presente</td></tr>
-            )}
+            {articoli.map((a) => (
+              <tr key={a.id}>
+                <td>{a.gruppo || "-"}</td>
+                <td>{a.nome}</td>
+                <td>{a.quantita}</td>
+                <td>{a.stagione}</td>
+                <td>
+                  {a.foto_url ? (
+                    <img
+                      src={a.foto_url}
+                      alt={a.nome}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 6,
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    "-"
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
