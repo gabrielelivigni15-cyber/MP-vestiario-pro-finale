@@ -1,128 +1,155 @@
 import React, { useState } from "react";
-import { supabase } from "../lib/supabase.js";
 import BarcodeScannerComponent from "react-webcam-barcode-scanner";
+import { supabase } from "../lib/supabase.js";
 
 export default function Scanner() {
   const [data, setData] = useState(null);
-  const [articolo, setArticolo] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [articoli, setArticoli] = useState([]);
 
-  // 🔎 Ricerca articolo in base al codice
   async function cercaArticolo(codice) {
-    setError("");
-    setArticolo(null);
     if (!codice) return;
+    setLoading(true);
+    setError("");
+    setData(codice);
+    setArticoli([]);
 
-    const { data, error } = await supabase
+    const { data: result, error } = await supabase
       .from("articoli")
       .select("*")
-      .eq("codice_fornitore", codice)
-      .single();
+      .eq("codice_fornitore", codice);
 
-    if (error || !data) {
+    setLoading(false);
+
+    if (error) {
+      console.error(error);
+      setError("Errore nel recupero dati da Supabase");
+      return;
+    }
+
+    if (!result || result.length === 0) {
       setError("Nessun articolo trovato per questo codice");
       return;
     }
 
-    setArticolo(data);
+    setArticoli(result);
   }
 
   return (
     <div className="container">
       <div className="card">
-        <h3>📷 Scansione codice articolo</h3>
-        <p style={{ marginBottom: 10, color: "#555" }}>
-          Inquadra il codice fornitore o QR dell'articolo.  
-          Il sistema lo riconoscerà automaticamente.
+        <h3>📷 Scanner codici articolo</h3>
+        <p className="muted">
+          Inquadra un codice fornitore per visualizzare i dettagli del capo.
         </p>
 
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 400,
-            margin: "0 auto",
-            borderRadius: 12,
-            overflow: "hidden",
-            border: "2px solid #ccc",
-          }}
-        >
+        <div style={{ maxWidth: 500, margin: "0 auto", borderRadius: 12, overflow: "hidden" }}>
           <BarcodeScannerComponent
-            width="100%"
+            width={"100%"}
             height={300}
             onUpdate={(err, result) => {
-              if (result) {
-                setData(result.text);
-                cercaArticolo(result.text.trim());
-              }
+              if (result) cercaArticolo(result.text.trim());
             }}
           />
         </div>
 
-        {data && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 10,
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              background: "#f9fafb",
-            }}
-          >
-            <b>Codice rilevato:</b> {data}
+        {loading && (
+          <div style={{ marginTop: 20, color: "#2563eb", fontWeight: 600 }}>
+            🔄 Ricerca in corso...
           </div>
         )}
 
         {error && (
           <div
             style={{
-              marginTop: 12,
-              color: "red",
+              marginTop: 20,
+              color: "#b91c1c",
               background: "#fee2e2",
               borderRadius: 8,
               padding: 10,
-              border: "1px solid #fecaca",
+              fontWeight: 500,
             }}
           >
             ⚠️ {error}
           </div>
         )}
 
-        {articolo && (
-          <div
-            style={{
-              marginTop: 16,
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              background: "#ecfdf5",
-              border: "1px solid #86efac",
-              borderRadius: 8,
-              padding: 10,
-            }}
-          >
-            {articolo.foto_url && (
-              <img
-                src={articolo.foto_url}
-                alt={articolo.nome}
-                style={{
-                  width: 70,
-                  height: 70,
-                  objectFit: "cover",
-                  borderRadius: 6,
-                  border: "1px solid #ccc",
-                }}
-              />
-            )}
-            <div>
-              <h4 style={{ margin: 0 }}>{articolo.nome}</h4>
-              <div>
-                <b>Taglia:</b> {articolo.taglia || "-"} | <b>Gruppo:</b>{" "}
-                {articolo.gruppo || "-"}
-              </div>
-              <div>
-                <b>Quantità:</b> {articolo.quantita} | <b>Prezzo:</b>{" "}
-                {articolo.prezzo_unitario} €
-              </div>
+        {articoli.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <h4>
+              {articoli.length > 1
+                ? `Trovate ${articoli.length} varianti per questo codice`
+                : `Articolo trovato`}
+            </h4>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                gap: 16,
+                marginTop: 12,
+              }}
+            >
+              {articoli.map((a) => (
+                <div
+                  key={a.id}
+                  style={{
+                    border: "1px solid #ddd",
+                    borderRadius: 10,
+                    padding: 10,
+                    background: "#f9fafb",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                    transition: "0.2s",
+                  }}
+                >
+                  {a.foto_url && (
+                    <img
+                      src={a.foto_url}
+                      alt={a.nome}
+                      style={{
+                        width: "100%",
+                        height: 130,
+                        objectFit: "cover",
+                        borderRadius: 8,
+                        marginBottom: 6,
+                      }}
+                    />
+                  )}
+                  <b>{a.nome}</b>
+                  <div className="muted">Taglia: {a.taglia || "-"}</div>
+                  <div className="muted">Gruppo: {a.gruppo || "-"}</div>
+                  <div className="muted">Stagione: {a.stagione || "-"}</div>
+                  <div style={{ marginTop: 6 }}>
+                    <b>Quantità:</b> {a.quantita ?? 0}
+                  </div>
+                  <div>
+                    <b>Prezzo:</b> €{a.prezzo_unitario?.toFixed(2) ?? "0.00"}
+                  </div>
+
+                  {/* Pulsante per assegnare direttamente */}
+                  <button
+                    style={{
+                      width: "100%",
+                      marginTop: 10,
+                      background: "#2563eb",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "6px 0",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                    onClick={() =>
+                      alert(
+                        `Assegna capo:\n${a.nome} - Taglia ${a.taglia || "-"}`
+                      )
+                    }
+                  >
+                    ➕ Assegna questo capo
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}
