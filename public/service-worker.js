@@ -1,4 +1,3 @@
-// MP Vestiario Pro - Service Worker
 self.addEventListener("install", (event) => {
   console.log("📦 [SW] Installazione completata");
   event.waitUntil(
