@@ -1,18 +1,17 @@
 import React, { useState } from "react";
-import BarcodeScannerComponent from "react-webcam-barcode-scanner";
+import { QrScanner } from "@yudiel/react-qr-scanner";
 import { supabase } from "../lib/supabase.js";
 
 export default function Scanner() {
-  const [data, setData] = useState(null);
+  const [scanResult, setScanResult] = useState("");
+  const [articoli, setArticoli] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [articoli, setArticoli] = useState([]);
 
   async function cercaArticolo(codice) {
     if (!codice) return;
     setLoading(true);
     setError("");
-    setData(codice);
     setArticoli([]);
 
     const { data: result, error } = await supabase
@@ -44,13 +43,23 @@ export default function Scanner() {
           Inquadra un codice fornitore per visualizzare i dettagli del capo.
         </p>
 
-        <div style={{ maxWidth: 500, margin: "0 auto", borderRadius: 12, overflow: "hidden" }}>
-          <BarcodeScannerComponent
-            width={"100%"}
-            height={300}
-            onUpdate={(err, result) => {
-              if (result) cercaArticolo(result.text.trim());
+        <div
+          style={{
+            maxWidth: 500,
+            margin: "0 auto",
+            borderRadius: 12,
+            overflow: "hidden",
+          }}
+        >
+          <QrScanner
+            onDecode={(result) => {
+              if (result && result !== scanResult) {
+                setScanResult(result);
+                cercaArticolo(result.trim());
+              }
             }}
+            onError={(err) => console.error(err)}
+            style={{ width: "100%", height: 300 }}
           />
         </div>
 
@@ -126,28 +135,6 @@ export default function Scanner() {
                   <div>
                     <b>Prezzo:</b> €{a.prezzo_unitario?.toFixed(2) ?? "0.00"}
                   </div>
-
-                  {/* Pulsante per assegnare direttamente */}
-                  <button
-                    style={{
-                      width: "100%",
-                      marginTop: 10,
-                      background: "#2563eb",
-                      color: "white",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "6px 0",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
-                    onClick={() =>
-                      alert(
-                        `Assegna capo:\n${a.nome} - Taglia ${a.taglia || "-"}`
-                      )
-                    }
-                  >
-                    ➕ Assegna questo capo
-                  </button>
                 </div>
               ))}
             </div>
