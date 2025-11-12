@@ -7,7 +7,7 @@ export default function Storico() {
   useEffect(() => {
     fetchStorico();
 
-    // 🔁 Realtime su assegnazioni
+    // 🔁 Realtime aggiornamento automatico
     const ch = supabase
       .channel("storico-realtime")
       .on(
@@ -20,7 +20,7 @@ export default function Storico() {
     return () => supabase.removeChannel(ch);
   }, []);
 
-  // 📦 Carica storico con relazioni
+  // 📦 Caricamento storico con relazioni complete
   async function fetchStorico() {
     const { data, error } = await supabase
       .from("assegnazioni")
@@ -29,7 +29,7 @@ export default function Storico() {
         quantita,
         data_consegna,
         personale ( nome ),
-        articoli ( nome, taglia, gruppo, prezzo_unitario )
+        articoli ( nome, gruppo, taglia, prezzo_unitario, foto_url )
       `)
       .order("id", { ascending: false });
 
@@ -54,6 +54,7 @@ export default function Storico() {
               <th>Articolo</th>
               <th>Gruppo</th>
               <th>Taglia</th>
+              <th>Foto</th>
               <th>Quantità</th>
               <th>Data consegna</th>
               <th>Valore totale</th>
@@ -62,32 +63,53 @@ export default function Storico() {
           <tbody>
             {storico.length === 0 ? (
               <tr>
-                <td colSpan="8" style={{ textAlign: "center", padding: 12 }}>
+                <td colSpan="9" style={{ textAlign: "center", padding: 12 }}>
                   Nessuna assegnazione registrata
                 </td>
               </tr>
             ) : (
-              storico.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.id}</td>
-                  <td>{s.personale?.nome || "-"}</td>
-                  <td>{s.articoli?.nome || "-"}</td>
-                  <td>{s.articoli?.gruppo || "-"}</td>
-                  <td>{s.articoli?.taglia || "-"}</td>
-                  <td>{s.quantita || 0}</td>
-                  <td>
-                    {s.data_consegna
-                      ? new Date(s.data_consegna).toLocaleDateString("it-IT")
-                      : "-"}
-                  </td>
-                  <td>
-                    €
-                    {s.articoli?.prezzo_unitario && s.quantita
-                      ? (s.articoli.prezzo_unitario * s.quantita).toFixed(2)
-                      : "0.00"}
-                  </td>
-                </tr>
-              ))
+              storico.map((s) => {
+                const prezzo = parseFloat(s.articoli?.prezzo_unitario) || 0;
+                const qty = parseInt(s.quantita) || 0;
+                const totale = (prezzo * qty).toFixed(2);
+
+                return (
+                  <tr key={s.id}>
+                    <td>{s.id}</td>
+                    <td>{s.personale?.nome || "-"}</td>
+                    <td>{s.articoli?.nome || "-"}</td>
+                    <td>{s.articoli?.gruppo || "-"}</td>
+                    <td>{s.articoli?.taglia || "-"}</td>
+                    <td style={{ textAlign: "center" }}>
+                      {s.articoli?.foto_url ? (
+                        <img
+                          src={s.articoli.foto_url}
+                          alt={s.articoli.nome}
+                          style={{
+                            width: 45,
+                            height: 45,
+                            objectFit: "cover",
+                            borderRadius: 6,
+                            border: "1px solid #ccc",
+                          }}
+                          onClick={() =>
+                            window.open(s.articoli.foto_url, "_blank")
+                          }
+                        />
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>{qty}</td>
+                    <td>
+                      {s.data_consegna
+                        ? new Date(s.data_consegna).toLocaleDateString("it-IT")
+                        : "-"}
+                    </td>
+                    <td>€ {totale}</td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
