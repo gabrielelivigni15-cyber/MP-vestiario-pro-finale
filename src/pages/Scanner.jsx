@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase.js";
-import { BarcodeScannerComponent } from "react-qr-barcode-scanner";
+import BarcodeScannerComponent from "react-webcam-barcode-scanner";
 
 export default function Scanner() {
   const [data, setData] = useState(null);
