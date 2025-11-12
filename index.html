@@ -42,5 +42,20 @@
 
     <!-- ❌ RIMOSSO SERVICE WORKER per evitare cache -->
     <!-- Niente cache, nessun Ctrl + F5, tutto si aggiorna subito -->
+  <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    for (let reg of regs) {
+      console.log('🧹 Rimozione SW:', reg);
+      reg.unregister();
+    }
+  });
+  caches.keys().then((keys) => {
+    for (let key of keys) {
+      caches.delete(key);
+    }
+  });
+}
+</script>
   </body>
 </html>
