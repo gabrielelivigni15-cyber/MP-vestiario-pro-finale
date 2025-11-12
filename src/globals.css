@@ -1,51 +1,64 @@
+/* ==============================
+   PALETTE COLORI MEDIPOWER
+============================== */
 :root {
-  --mp-red: #c70000;
+  --mp-red: #c80000;
   --mp-red-dark: #a40000;
-  --mp-anthracite: #2b2b2b;
-  --mp-gray: #f5f5f5;
+  --mp-anthracite: #202225;
+  --mp-gray-light: #f3f4f6;
+  --mp-border: #d1d5db;
   --mp-white: #ffffff;
-  --mp-border: #e0e0e0;
-  --mp-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
-/* ======= STRUTTURA BASE ======= */
-html,
+/* ==============================
+   STRUTTURA BASE
+============================== */
 body {
   margin: 0;
-  padding: 0;
   font-family: "Inter", sans-serif;
-  background-color: var(--mp-gray);
-  color: #1a1a1a;
+  background-color: var(--mp-gray-light);
+  color: #1e1e1e;
 }
 
 .topbar {
-  background: var(--mp-white);
+  background-color: var(--mp-white);
   border-bottom: 1px solid var(--mp-border);
+  padding: 12px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 20px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .brand img {
   height: 42px;
 }
 
+.badge {
+  background: var(--mp-red);
+  color: var(--mp-white);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* ==============================
+   LAYOUT & SIDEBAR
+============================== */
 .layout {
   display: flex;
   min-height: 100vh;
 }
 
-/* ======= SIDEBAR ======= */
 .sidebar {
   width: 230px;
-  background: var(--mp-anthracite);
+  background-color: var(--mp-anthracite);
   color: var(--mp-white);
   display: flex;
   flex-direction: column;
@@ -59,109 +72,108 @@ body {
 }
 
 .sidebar a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
   text-decoration: none;
   color: var(--mp-white);
+  padding: 12px 18px;
   font-weight: 500;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sidebar a:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .sidebar a.active {
-  background: var(--mp-red);
+  background-color: var(--mp-red);
   font-weight: 600;
 }
 
 .sidebar .muted {
-  padding: 10px 20px;
   font-size: 12px;
-  color: #ccc;
+  padding: 12px 18px;
+  color: #aaa;
 }
 
-/* ======= CONTENUTO ======= */
+/* ==============================
+   CONTENUTO & CARD
+============================== */
 .content {
-  flex-grow: 1;
+  flex: 1;
   padding: 24px;
 }
 
-/* ======= CARD ======= */
 .card {
   background: var(--mp-white);
+  border: 1px solid var(--mp-border);
   border-radius: 10px;
-  box-shadow: var(--mp-shadow);
   padding: 20px;
   margin-bottom: 16px;
 }
 
 .card h3 {
   margin-top: 0;
-  color: var(--mp-anthracite);
+  font-size: 18px;
+  color: #1e1e1e;
 }
 
-/* ======= TABELLE ======= */
+/* ==============================
+   TABELLE
+============================== */
 .table {
   width: 100%;
   border-collapse: collapse;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.table th,
-.table td {
-  border: 1px solid var(--mp-border);
-  padding: 10px 12px;
-  text-align: left;
+  margin-top: 10px;
 }
 
 .table th {
-  background: var(--mp-gray);
+  background-color: var(--mp-gray-light);
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid var(--mp-border);
   font-weight: 600;
 }
 
-.table tr:nth-child(even) {
-  background: #fafafa;
+.table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--mp-border);
 }
 
-/* ======= PULSANTI ======= */
+.table tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+/* ==============================
+   BOTTONI
+============================== */
 .btn {
-  background: var(--mp-red);
+  background-color: var(--mp-red);
   color: var(--mp-white);
   border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
+  border-radius: 6px;
+  padding: 6px 12px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .btn:hover {
-  background: var(--mp-red-dark);
+  background-color: var(--mp-red-dark);
 }
 
 .btn.secondary {
-  background: var(--mp-anthracite);
+  background-color: #4b5563;
 }
 
 .btn.secondary:hover {
-  background: #1a1a1a;
+  background-color: #374151;
 }
 
-.badge {
-  background: #f5dcdc;
-  color: var(--mp-red);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-/* ======= RESPONSIVE ======= */
+/* ==============================
+   RESPONSIVE
+============================== */
 @media (max-width: 768px) {
   .layout {
     flex-direction: column;
