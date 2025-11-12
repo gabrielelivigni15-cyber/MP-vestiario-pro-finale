@@ -1,26 +1,25 @@
-self.addEventListener("install", (event) => {
-  console.log("📦 [SW] Installazione completata");
-  event.waitUntil(
-    caches.open("mp-vestiario-cache-v1").then((cache) => {
-      return cache.addAll([
-        "/",
-        "/index.html",
-        "/manifest.json",
-        "/app-icons/icon-192.png",
-        "/app-icons/icon-512.png"
-      ]);
-    })
-  );
-});
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MP Vestiario Pro</title>
 
-self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
-});
+    <link rel="icon" href="/medipower-logo.png" type="image/png" />
 
-self.addEventListener("activate", () => {
-  console.log("🚀 [SW] Attivo e in ascolto");
-});
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Stile globale -->
+    <link rel="stylesheet" href="./src/globals.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.jsx"></script>
+  </body>
+</html>
