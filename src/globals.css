@@ -1,32 +1,30 @@
-/* ==============================
-   PALETTE COLORI MEDIPOWER
-============================== */
 :root {
-  --mp-red: #c80000;
-  --mp-red-dark: #a40000;
-  --mp-anthracite: #202225;
-  --mp-gray-light: #f3f4f6;
-  --mp-border: #d1d5db;
-  --mp-white: #ffffff;
+  --mp-red: #b30e0e;
+  --mp-gray-bg: #f5f6f8;
+  --mp-text: #333;
+  --mp-border: #e6e6e6;
 }
 
-/* ==============================
-   STRUTTURA BASE
-============================== */
+html,
 body {
   margin: 0;
+  padding: 0;
   font-family: "Inter", sans-serif;
-  background-color: var(--mp-gray-light);
-  color: #1e1e1e;
+  color: var(--mp-text);
+  background: var(--mp-gray-bg);
 }
 
+/* TOPBAR */
 .topbar {
-  background-color: var(--mp-white);
+  background: white;
   border-bottom: 1px solid var(--mp-border);
-  padding: 12px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 12px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .brand {
@@ -36,165 +34,139 @@ body {
 }
 
 .brand img {
-  height: 42px;
+  height: 40px;
 }
 
 .badge {
-  background: var(--mp-red);
-  color: var(--mp-white);
-  padding: 6px 12px;
-  border-radius: 12px;
+  background: #ffeaea;
+  color: var(--mp-red);
   font-weight: 600;
-  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 20px;
 }
 
-/* ==============================
-   LAYOUT & SIDEBAR
-============================== */
+/* LAYOUT */
 .layout {
-  display: flex;
-  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: calc(100vh - 60px);
 }
 
+/* SIDEBAR */
 .sidebar {
-  width: 230px;
-  background-color: var(--mp-anthracite);
-  color: var(--mp-white);
+  background: white;
+  border-right: 1px solid var(--mp-border);
+  padding: 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 
-.sidebar .nav {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 0;
-}
-
-.sidebar a {
-  text-decoration: none;
-  color: var(--mp-white);
-  padding: 12px 18px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sidebar a:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.sidebar a.active {
-  background-color: var(--mp-red);
-  font-weight: 600;
-}
-
-.sidebar .muted {
-  font-size: 12px;
-  padding: 12px 18px;
-  color: #aaa;
-}
-
-/* ==============================
-   CONTENUTO & CARD
-============================== */
-.content {
-  flex: 1;
-  padding: 24px;
-}
-
-.card {
-  background: var(--mp-white);
-  border: 1px solid var(--mp-border);
+.nav a {
+  display: block;
+  padding: 10px 14px;
   border-radius: 10px;
+  color: var(--mp-text);
+  text-decoration: none;
+  border: 1px solid var(--mp-border);
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.nav a:hover {
+  background: #fff5f5;
+  color: var(--mp-red);
+  border-color: var(--mp-red);
+}
+
+.nav a.active {
+  background: #fff0f0;
+  color: var(--mp-red);
+  border-color: var(--mp-red);
+}
+
+.muted {
+  color: #888;
+  font-size: 12px;
+}
+
+/* CONTENT */
+.content {
+  padding: 24px;
+  background: var(--mp-gray-bg);
+}
+
+/* CARD */
+.card {
+  background: white;
+  border: 1px solid var(--mp-border);
+  border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
 }
 
-.card h3 {
-  margin-top: 0;
-  font-size: 18px;
-  color: #1e1e1e;
-}
-
-/* ==============================
-   TABELLE
-============================== */
+/* TABLE */
 .table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--mp-border);
+  text-align: left;
 }
 
 .table th {
-  background-color: var(--mp-gray-light);
-  text-align: left;
-  padding: 10px;
-  border-bottom: 1px solid var(--mp-border);
+  background: #fafafa;
   font-weight: 600;
 }
 
-.table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--mp-border);
-}
-
-.table tr:nth-child(even) {
-  background-color: #fafafa;
-}
-
-/* ==============================
-   BOTTONI
-============================== */
+/* BUTTON */
 .btn {
-  background-color: var(--mp-red);
-  color: var(--mp-white);
+  background: var(--mp-red);
+  color: white;
   border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
+  border-radius: 8px;
+  padding: 8px 14px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .btn:hover {
-  background-color: var(--mp-red-dark);
+  background: #a40b0b;
 }
 
 .btn.secondary {
-  background-color: #4b5563;
+  background: #f1f1f1;
+  color: #333;
 }
 
 .btn.secondary:hover {
-  background-color: #374151;
+  background: #e3e3e3;
 }
 
-/* ==============================
-   RESPONSIVE
-============================== */
+/* RESPONSIVE */
 @media (max-width: 768px) {
   .layout {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .sidebar {
-    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--mp-border);
     flex-direction: row;
     overflow-x: auto;
   }
 
-  .sidebar a {
-    padding: 10px;
-    font-size: 14px;
+  .nav a {
+    margin-right: 8px;
+    margin-bottom: 0;
   }
 
   .content {
     padding: 16px;
-  }
-
-  .table {
-    font-size: 14px;
   }
 }
