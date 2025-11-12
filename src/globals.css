@@ -8,7 +8,8 @@
   --mp-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   font-family: "Inter", sans-serif;
@@ -16,7 +17,7 @@ html, body {
   color: #222;
 }
 
-/* --------- Layout generale --------- */
+/* --------- Layout --------- */
 .topbar {
   background: var(--mp-white);
   border-bottom: 1px solid var(--mp-border);
@@ -134,19 +135,23 @@ html, body {
   .layout {
     flex-direction: column;
   }
+
   .sidebar {
     width: 100%;
     flex-direction: row;
     overflow-x: auto;
     justify-content: space-around;
   }
+
   .sidebar a {
     padding: 10px;
     font-size: 14px;
   }
+
   .content {
     padding: 16px;
   }
+
   table {
     font-size: 14px;
   }
