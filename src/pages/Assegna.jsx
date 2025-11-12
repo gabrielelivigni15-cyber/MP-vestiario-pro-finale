@@ -6,6 +6,7 @@ function Assegna() {
   const [articoli, setArticoli] = useState([]);
   const [persone, setPersone] = useState([]);
   const [storico, setStorico] = useState([]);
+  const [log, setLog] = useState([]);
   const [stagione, setStagione] = useState("");
 
   const [form, setForm] = useState({
@@ -73,11 +74,20 @@ function Assegna() {
       .eq("id", articolo.id);
     if (updateError) return alert(updateError.message);
 
+    // 🧾 Log azione
+    const persona = persone.find((p) => p.id == form.id_persona);
+    aggiungiLog(
+      "ASSEGNAZIONE",
+      persona?.nome || "-",
+      articolo.nome,
+      form.quantita
+    );
+
     setForm({ id_persona: "", gruppo: "", id_articolo: "", quantita: 1 });
     await load();
   }
 
-  // ❌ Annulla assegnazione
+  // ❌ Annulla assegnazione (fix quantità + log)
   async function annullaAssegnazione(assegnazione) {
     if (
       !confirm(
@@ -86,14 +96,23 @@ function Assegna() {
     )
       return;
 
-    const articolo = articoli.find((a) => a.id === assegnazione.id_articolo);
-    if (!articolo) return alert("Articolo non trovato nel magazzino.");
+    // 🔹 Recupera quantità aggiornata direttamente dal DB
+    const { data: articoloData, error: readErr } = await supabase
+      .from("articoli")
+      .select("id, nome, quantita")
+      .eq("id", assegnazione.id_articolo)
+      .single();
 
-    const nuovaQuantita = articolo.quantita + assegnazione.quantita;
+    if (readErr || !articoloData)
+      return alert("Errore nel recupero quantità attuale dell'articolo.");
+
+    const nuovaQuantita =
+      (articoloData.quantita || 0) + (assegnazione.quantita || 0);
+
     const { error: updateError } = await supabase
       .from("articoli")
       .update({ quantita: nuovaQuantita })
-      .eq("id", articolo.id);
+      .eq("id", assegnazione.id_articolo);
     if (updateError) return alert(updateError.message);
 
     const { error: deleteError } = await supabase
@@ -102,14 +121,37 @@ function Assegna() {
       .eq("id", assegnazione.id);
     if (deleteError) return alert(deleteError.message);
 
+    // 🧾 Log azione
+    const persona = persone.find((p) => p.id === assegnazione.id_persona);
+    aggiungiLog(
+      "ANNULLAMENTO",
+      persona?.nome || "-",
+      articoloData.nome,
+      assegnazione.quantita
+    );
+
     await load();
     alert("Assegnazione annullata ✅");
   }
 
+  // 🪵 Funzione log interno
+  function aggiungiLog(tipo, persona, articolo, quantita) {
+    const entry = {
+      id: Date.now(),
+      tipo,
+      persona,
+      articolo,
+      quantita,
+      data: new Date().toLocaleString("it-IT"),
+    };
+    setLog((prev) => [entry, ...prev].slice(0, 10)); // tieni solo le ultime 10
+  }
+
   // 🔽 Varianti del gruppo selezionato
   const varianti = articoli.filter((a) => a.gruppo === form.gruppo);
-
-  const articoloSelezionato = articoli.find((a) => a.id === parseInt(form.id_articolo));
+  const articoloSelezionato = articoli.find(
+    (a) => a.id === parseInt(form.id_articolo)
+  );
 
   return (
     <div className="container">
@@ -119,7 +161,9 @@ function Assegna() {
 
         {/* FILTRO STAGIONE */}
         <div style={{ marginBottom: 12 }}>
-          <label style={{ fontWeight: "500", marginRight: 8 }}>Filtra per stagione:</label>
+          <label style={{ fontWeight: "500", marginRight: 8 }}>
+            Filtra per stagione:
+          </label>
           <select
             value={stagione}
             onChange={(e) => setStagione(e.target.value)}
@@ -287,6 +331,48 @@ function Assegna() {
                   Nessuna assegnazione registrata
                 </td>
               </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* --- MINI LOG --- */}
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>Log movimentazioni (ultime 10)</h3>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Persona</th>
+              <th>Articolo</th>
+              <th>Quantità</th>
+            </tr>
+          </thead>
+          <tbody>
+            {log.length === 0 ? (
+              <tr>
+                <td colSpan="5" style={{ textAlign: "center", color: "#6b7280" }}>
+                  Nessuna movimentazione recente
+                </td>
+              </tr>
+            ) : (
+              log.map((l) => (
+                <tr key={l.id}>
+                  <td>{l.data}</td>
+                  <td
+                    style={{
+                      color: l.tipo === "ASSEGNAZIONE" ? "green" : "red",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {l.tipo}
+                  </td>
+                  <td>{l.persona}</td>
+                  <td>{l.articolo}</td>
+                  <td>{l.quantita}</td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
