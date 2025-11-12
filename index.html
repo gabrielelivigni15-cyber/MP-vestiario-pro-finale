@@ -1,88 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
-    <meta name="theme-color" content="#2b2b2b" />
-    <meta
-      name="description"
-      content="MP Vestiario Pro - Gestione vestiario aziendale Medipower"
-    />
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MP Vestiario Pro</title>
-
-    <!-- 🔗 Manifest PWA -->
-    <link rel="manifest" href="/manifest.json" />
-
-    <!-- 🖼️ Icone -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/app-icons/icon-192.png" />
-    <link rel="apple-touch-icon" href="/app-icons/icon-512.png" />
-
-    <!-- 🖋️ Font Google -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="icon" href="/medipower-logo.png" />
   </head>
-
   <body>
-    <!-- 🔰 Root React -->
     <div id="root"></div>
-
-    <!-- ⚡ Entrata principale React/Vite -->
+    <!-- ⚠️ percorso RELATIVO: importantissimo per Vercel -->
     <script type="module" src="./src/main.jsx"></script>
-
-    <!-- 🧭 Service Worker -->
-    <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("/service-worker.js")
-            .then(() => console.log("✅ Service Worker registrato"))
-            .catch((err) => console.error("❌ Errore SW:", err));
-        });
-      }
-    </script>
-
-    <!-- 📲 Bottone “Installa App” -->
-    <script>
-      window.addEventListener("beforeinstallprompt", (e) => {
-        e.preventDefault();
-        const deferredPrompt = e;
-        const btn = document.createElement("button");
-        btn.innerText = "📲 Installa MP Vestiario Pro";
-        btn.style.cssText = `
-          position: fixed;
-          bottom: 90px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: #c70000;
-          color: white;
-          padding: 12px 20px;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 600;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-          z-index: 9999;
-          cursor: pointer;
-        `;
-        btn.onmouseenter = () => (btn.style.background = "#a40000");
-        btn.onmouseleave = () => (btn.style.background = "#c70000");
-        btn.onclick = async () => {
-          btn.remove();
-          deferredPrompt.prompt();
-          const choice = await deferredPrompt.userChoice;
-          if (choice.outcome === "accepted")
-            console.log("✅ App installata con successo");
-        };
-        document.body.appendChild(btn);
-      });
-    </script>
   </body>
 </html>
