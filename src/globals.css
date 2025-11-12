@@ -91,7 +91,14 @@ html, body {
   margin-bottom: 18px;
 }
 
-/* ====== INPUT & SELECT ====== */
+/* ====== FORM ====== */
+form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 18px;
+  align-items: center;
+}
+
 input, select, textarea {
   width: 100%;
   background: var(--input-bg);
@@ -147,4 +154,5 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 768px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { border-right: none; border-bottom: 1px solid var(--mp-border); }
+  form { grid-template-columns: 1fr; }
 }
