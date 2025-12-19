@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase.js";
 export default function Articoli() {
   const [articoli, setArticoli] = useState([]);
   const [gruppi, setGruppi] = useState([]);
+  const [openGruppi, setOpenGruppi] = useState({});
   const [form, setForm] = useState({
     nome: "",
     fornitore: "",
@@ -37,6 +38,64 @@ export default function Articoli() {
   useEffect(() => {
     load();
   }, []);
+
+  function toggleGruppo(nome) {
+    setOpenGruppi((prev) => ({ ...prev, [nome]: !prev?.[nome] }));
+  }
+
+  async function canDeleteArticolo(id_articolo) {
+    // Se ci sono assegnazioni legate a quell'articolo, meglio non eliminarlo
+    const { count, error } = await supabase
+      .from("assegnazioni")
+      .select("id", { count: "exact", head: true })
+      .eq("id_articolo", id_articolo);
+    if (error) return { ok: false, msg: error.message };
+    if ((count || 0) > 0)
+      return {
+        ok: false,
+        msg: "Non posso cancellare: esistono assegnazioni collegate a questo articolo.",
+      };
+    return { ok: true };
+  }
+
+  async function eliminaArticolo(articolo) {
+    if (!confirm(`Vuoi cancellare la variante "${articolo.nome}" (${articolo.taglia || "-"})?`))
+      return;
+
+    const check = await canDeleteArticolo(articolo.id);
+    if (!check.ok) return alert(check.msg);
+
+    const { error } = await supabase.from("articoli").delete().eq("id", articolo.id);
+    if (error) return alert(error.message);
+    await load();
+  }
+
+  async function eliminaGruppo(nomeGruppo) {
+    if (!nomeGruppo) return;
+    const articoliDelGruppo = articoli.filter((a) => a.gruppo === nomeGruppo);
+    if (articoliDelGruppo.length === 0) return;
+
+    if (
+      !confirm(
+        `Vuoi cancellare l'intero gruppo "${nomeGruppo}"? Verranno eliminate ${articoliDelGruppo.length} varianti.`
+      )
+    )
+      return;
+
+    // blocca se una delle varianti è già assegnata
+    for (const a of articoliDelGruppo) {
+      const check = await canDeleteArticolo(a.id);
+      if (!check.ok)
+        return alert(
+          `${check.msg}\n\nGruppo: ${nomeGruppo}\nVariante bloccante: ${a.nome} (${a.taglia || "-"})`
+        );
+    }
+
+    const ids = articoliDelGruppo.map((a) => a.id);
+    const { error } = await supabase.from("articoli").delete().in("id", ids);
+    if (error) return alert(error.message);
+    await load();
+  }
 
   // ➕ Aggiungi articolo
   async function aggiungiVariante() {
@@ -77,24 +136,12 @@ export default function Articoli() {
         <h3>Gestione Articoli (Gruppi & Varianti)</h3>
 
         {/* 🔸 SEZIONE GRUPPI */}
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
-            alignItems: "center",
-            marginBottom: "12px",
-          }}
-        >
-          <label style={{ fontWeight: 600 }}>Gruppi esistenti:</label>
+        <div className="row" style={{ marginBottom: 12 }}>
+          <label style={{ fontWeight: 600, whiteSpace: "nowrap" }}>Gruppi esistenti:</label>
           <select
             value={form.gruppo}
             onChange={(e) => setForm({ ...form, gruppo: e.target.value })}
-            style={{
-              flex: 1,
-              padding: "6px 8px",
-              borderRadius: "6px",
-              border: "1px solid #ccc",
-            }}
+            style={{ minWidth: 220, flex: 1 }}
           >
             <option value="">Seleziona gruppo</option>
             {gruppi.map((g, i) => (
@@ -103,19 +150,20 @@ export default function Articoli() {
               </option>
             ))}
           </select>
-          <button
-            onClick={aggiungiGruppo}
-            className="btn secondary"
-            style={{
-              backgroundColor: "#b30e0e",
-              color: "white",
-              padding: "6px 10px",
-              borderRadius: "6px",
-              border: "none",
-            }}
-          >
-            ➕ Aggiungi gruppo
-          </button>
+          <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={aggiungiGruppo} className="btn">
+              ➕ Aggiungi gruppo
+            </button>
+            {form.gruppo && (
+              <button
+                onClick={() => eliminaGruppo(form.gruppo)}
+                className="btn danger"
+                title="Elimina gruppo selezionato"
+              >
+                🗑️ Elimina gruppo
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 🔸 FORM ARTICOLI */}
@@ -203,44 +251,157 @@ export default function Articoli() {
 
       {/* 🔸 ELENCO ARTICOLI */}
       <div className="card" style={{ marginTop: 16 }}>
-        <h3>Elenco Articoli Raggruppati</h3>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Gruppo</th>
-              <th>Nome</th>
-              <th>Totale quantità</th>
-              <th>Stagione</th>
-              <th>Foto</th>
-            </tr>
-          </thead>
-          <tbody>
-            {articoli.map((a) => (
-              <tr key={a.id}>
-                <td>{a.gruppo || "-"}</td>
-                <td>{a.nome}</td>
-                <td>{a.quantita}</td>
-                <td>{a.stagione}</td>
-                <td>
-                  {a.foto_url ? (
-                    <img
-                      src={a.foto_url}
-                      alt={a.nome}
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 6,
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : (
-                    "-"
+        <h3>Elenco Articoli per Gruppo</h3>
+
+        {gruppi.length === 0 ? (
+          <div className="muted">Nessun gruppo presente</div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {gruppi.map((g) => {
+              const items = articoli.filter((a) => a.gruppo === g);
+              if (items.length === 0) return null;
+              const first = items[0];
+              const isOpen = !!openGruppi[g];
+
+              return (
+                <div
+                  key={g}
+                  style={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    background: "#fff",
+                  }}
+                >
+                  {/* Header gruppo (mostra 1° capo) */}
+                  <button
+                    onClick={() => toggleGruppo(g)}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      padding: "12px 14px",
+                      border: "none",
+                      background: "#fafafa",
+                      cursor: "pointer",
+                    }}
+                    title="Apri/chiudi gruppo"
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {first.foto_url ? (
+                        <img
+                          src={first.foto_url}
+                          alt={first.nome}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 10,
+                            objectFit: "cover",
+                            border: "1px solid #e5e7eb",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 10,
+                            border: "1px solid #e5e7eb",
+                            background: "#fff",
+                            display: "grid",
+                            placeItems: "center",
+                            color: "#9ca3af",
+                            fontWeight: 700,
+                          }}
+                        >
+                          MP
+                        </div>
+                      )}
+
+                      <div style={{ textAlign: "left" }}>
+                        <div style={{ fontWeight: 700 }}>{g}</div>
+                        <div className="muted">
+                          Primo capo: {first.nome} • Varianti: {items.length}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button
+                        className="btn secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          eliminaGruppo(g);
+                        }}
+                        style={{ background: "#111827", color: "#fff" }}
+                        title="Elimina gruppo"
+                      >
+                        🗑️
+                      </button>
+                      <span style={{ fontSize: 18 }}>{isOpen ? "▴" : "▾"}</span>
+                    </div>
+                  </button>
+
+                  {/* Tendina varianti */}
+                  {isOpen && (
+                    <div style={{ padding: 14 }}>
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Nome</th>
+                            <th>Taglia</th>
+                            <th>Quantità</th>
+                            <th>Stagione</th>
+                            <th>Prezzo</th>
+                            <th style={{ width: 110 }}>Azioni</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((a) => (
+                            <tr key={a.id}>
+                              <td style={{ fontWeight: 600 }}>{a.nome}</td>
+                              <td>{a.taglia || "-"}</td>
+                              <td>{a.quantita ?? "-"}</td>
+                              <td>{a.stagione || "-"}</td>
+                              <td>
+                                {a.prezzo_unitario
+                                  ? `${parseFloat(a.prezzo_unitario).toFixed(2)} €`
+                                  : "-"}
+                              </td>
+                              <td>
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <button
+                                    className="btn secondary"
+                                    style={{ background: "#b30e0e", color: "#fff" }}
+                                    onClick={() => eliminaArticolo(a)}
+                                    title="Elimina variante"
+                                  >
+                                    🗑️
+                                  </button>
+                                  {a.foto_url ? (
+                                    <button
+                                      className="btn secondary"
+                                      onClick={() => window.open(a.foto_url, "_blank")}
+                                      title="Apri foto"
+                                    >
+                                      🖼️
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

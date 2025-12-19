@@ -39,6 +39,9 @@ html,body{
 .content{padding:24px;background:var(--mp-gray-bg)}
 .muted{color:#888;font-size:12px}
 
+/* Utility rows */
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
 /* Card & table */
 .card{background:#fff;border-radius:12px;border:1px solid var(--mp-border);padding:20px;margin-bottom:18px}
 .table{width:100%;border-collapse:collapse}
@@ -52,8 +55,15 @@ html,body{
   gap:14px 18px;                         /* spazi tra righe/colonne */
   align-items:center;
 }
+.form-grid-3{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+  align-items:center;
+}
 @media (max-width: 900px){
   .form-grid{grid-template-columns:1fr;} /* 1 colonna su mobile */
+  .form-grid-3{grid-template-columns:1fr;}
 }
 
 input,select,textarea{
@@ -80,6 +90,23 @@ input:focus,select:focus,textarea:focus{
 .btn:hover{background:#a40b0b}
 .btn.secondary{background:#f1f1f1;color:#333}
 .btn.secondary:hover{background:#e3e3e3}
+.btn.danger{background:#111827;color:#fff}
+.btn.danger:hover{background:#0b1220}
+
+/* Tabelle più leggibili */
+.table td .btn{padding:6px 10px;border-radius:8px}
+
+/* Evita sovrapposizioni su schermi piccoli */
+@media (max-width: 900px){
+  .table{display:block;overflow:auto;white-space:nowrap}
+}
+/* Better touch targets */
+button.btn{min-height:36px}
+
+/* Table on small screens */
+@media (max-width: 640px){
+  .table th,.table td{padding:8px 10px}
+}
 
 /* Responsive layout */
 @media (max-width: 768px){

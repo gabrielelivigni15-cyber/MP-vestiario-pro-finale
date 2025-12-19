@@ -176,10 +176,7 @@ function Assegna() {
         </div>
 
         {/* FORM ASSEGNA */}
-        <form
-          onSubmit={assegna}
-          style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}
-        >
+        <form onSubmit={assegna} className="form-grid-3">
           <select
             required
             value={form.id_persona}
@@ -232,7 +229,8 @@ function Assegna() {
             onChange={(e) => setForm({ ...form, quantita: e.target.value })}
           />
 
-          <div style={{ gridColumn: "1/-1", textAlign: "right" }}>
+          <div style={{ gridColumn: "1/-1" }} className="row">
+            <div style={{ flex: 1 }} />
             <button className="btn">➕ Assegna</button>
           </div>
         </form>
