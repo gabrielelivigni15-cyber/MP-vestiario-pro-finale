@@ -65,8 +65,10 @@ export default function Articoli() {
   async function aggiungiGruppo() {
     const nomeGruppo = prompt("Inserisci il nome del nuovo gruppo:");
     if (!nomeGruppo) return;
-    setGruppi([...gruppi, nomeGruppo]);
-    alert(`Gruppo "${nomeGruppo}" aggiunto con successo!`);
+    // Nota: i gruppi in questa versione sono “derivati” dagli articoli presenti.
+    // Qui lo aggiungiamo alla lista per comodità e lo pre-selezioniamo nel form.
+    setGruppi((prev) => [...new Set([...(prev || []), nomeGruppo])]);
+    setForm((prev) => ({ ...prev, gruppo: nomeGruppo }));
   }
 
   return (

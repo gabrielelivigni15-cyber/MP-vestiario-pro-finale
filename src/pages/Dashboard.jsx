@@ -29,7 +29,12 @@ export default function Dashboard(){
   const articoliTotali = articoli.length
   const personaleTotale = personale.length
   const scorteCritiche = articoli.filter(a=> (a.quantita??0) <= 5).length
-  const valoreTotale = articoli.reduce((acc,a)=>acc + (a.valore||0)*(a.quantita||0),0)
+  // valore/prezzo: supporta entrambe le colonne (legacy: valore, nuovo: prezzo_unitario)
+  const valoreTotale = articoli.reduce((acc,a)=>{
+    const prezzo = parseFloat(a.prezzo_unitario ?? a.valore ?? 0) || 0
+    const qty = parseInt(a.quantita ?? 0) || 0
+    return acc + prezzo * qty
+  },0)
 
   const quantitaPerTipo = useMemo(()=>{
     const map={}
@@ -38,10 +43,20 @@ export default function Dashboard(){
   },[articoli])
 
   const assegnazioniCount = useMemo(()=>{
+    // Conta per articolo (mostra nome articolo se presente)
     const map={}
-    assegnazioni.forEach(x=> map[x.nome_capo || x.id_articolo] = (map[x.nome_capo || x.id_articolo]||0)+1)
-    return Object.entries(map).map(([name,value])=>({name,value}))
-  },[assegnazioni])
+    assegnazioni.forEach(x=>{
+      const key = x.id_articolo ?? 'N/D'
+      map[key] = (map[key]||0)+1
+    })
+    return Object.entries(map)
+      .map(([id,value])=>{
+        const art = articoli.find(a=> String(a.id)===String(id))
+        return { name: art?.nome ? `${art.nome}${art.taglia?` (${art.taglia})`:''}` : `Articolo #${id}`, value }
+      })
+      .sort((a,b)=>b.value-a.value)
+      .slice(0,8)
+  },[assegnazioni,articoli])
 
   const trendMensile = useMemo(()=>{
     const map={}

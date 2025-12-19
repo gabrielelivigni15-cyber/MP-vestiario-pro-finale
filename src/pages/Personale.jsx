@@ -35,7 +35,7 @@ export default function Personale() {
   useEffect(() => {
     const ch = supabase
       .channel("public:personale")
-      .on("postgres_changes", { event: "*", schema: "public" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "personale" }, load)
       .subscribe();
 
     return () => supabase.removeChannel(ch);
